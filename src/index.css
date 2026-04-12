@@ -1,0 +1,86 @@
+@import url('https://fonts.googleapis.com/css2?family=Anton&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-display: "Anton", sans-serif;
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+  
+  --color-neon-green: #00FF00;
+  --color-brutal-black: #000000;
+  --color-gallery-white: #FFFFFF;
+}
+
+body {
+  background-color: var(--color-gallery-white);
+  color: var(--color-brutal-black);
+  font-family: var(--font-sans);
+}
+
+/* Thick borders for brutalist feel */
+.brutal-border {
+  border: 2px solid var(--color-brutal-black);
+}
+
+.brutal-border-b {
+  border-bottom: 2px solid var(--color-brutal-black);
+}
+
+.brutal-border-r {
+  border-right: 2px solid var(--color-brutal-black);
+}
+
+/* Neon hover effect */
+.brutal-btn {
+  background-color: var(--color-gallery-white);
+  color: var(--color-brutal-black);
+  border: 2px solid var(--color-brutal-black);
+  transition: all 0.2s ease;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.brutal-btn:hover:not(:disabled) {
+  background-color: var(--color-neon-green);
+  transform: translate(-2px, -2px);
+  box-shadow: 4px 4px 0px var(--color-brutal-black);
+}
+
+.brutal-btn:active:not(:disabled) {
+  transform: translate(0px, 0px);
+  box-shadow: 0px 0px 0px var(--color-brutal-black);
+}
+
+.brutal-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Marquee animation */
+.marquee-track {
+  display: flex;
+  animation: marquee 20s linear infinite;
+}
+
+@keyframes marquee {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+.brutal-scrollbar::-webkit-scrollbar {
+  width: 12px;
+}
+
+.brutal-scrollbar::-webkit-scrollbar-track {
+  background: #000;
+  border-left: 2px solid #333;
+}
+
+.brutal-scrollbar::-webkit-scrollbar-thumb {
+  background: #00FF00;
+  border: 2px solid #000;
+}
+
+.brutal-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #fff;
+}

@@ -294,9 +294,8 @@ export const distillSkill = async (
       chunks.push(fullText.substring(i, i + MAX_CHUNK_SIZE));
     }
     
-    let summarizedContext = "";
-    for (let i = 0; i < chunks.length; i++) {
-      const chunkPrompt = `This is part ${i + 1} of ${chunks.length} of the source documents. The content is too long, so we are processing it in chunks. Please extract and summarize the following information from this chunk to help build a persona profile later:
+    const chunkPromises = chunks.map(async (chunk, i) => {
+      const chunkSystemPrompt = `You are an expert document analyzer. The content is too long, so we are processing it in chunks. Please extract and summarize the following information from this chunk to help build a persona profile later:
 1. Linguistic traits (tone, catchphrases, style)
 2. Cognitive traits (mental models, values, heuristics, quotes)
 3. Identity (background, role, workflow)
@@ -311,9 +310,12 @@ CRITICAL: Preserve specific quotes and evidence intact. ${langInstruction}`;
            });
            const res = await openai.chat.completions.create({
              model: apiConfig?.model || "gpt-4o-mini",
-             messages: [{ role: "user", content: chunks[i] }, { role: "user", content: chunkPrompt }]
+             messages: [
+               { role: "system", content: chunkSystemPrompt },
+               { role: "user", content: `--- Part ${i + 1} of ${chunks.length} ---\n${chunk}` }
+             ]
            });
-           summarizedContext += `\n\n--- Summary of Part ${i + 1} ---\n${res.choices[0].message.content}`;
+           return `\n\n--- Summary of Part ${i + 1} ---\n${res.choices[0].message.content}`;
         } else {
            const clientOptions: any = {};
            if (apiConfig?.apiKey) clientOptions.apiKey = apiConfig.apiKey;
@@ -322,16 +324,19 @@ CRITICAL: Preserve specific quotes and evidence intact. ${langInstruction}`;
            const customAi = new GoogleGenAI(clientOptions);
            const res = await customAi.models.generateContent({
              model: apiConfig?.model || "gemini-2.5-flash",
-             contents: { parts: [{ text: chunks[i] }, { text: chunkPrompt }] }
+             systemInstruction: chunkSystemPrompt,
+             contents: { parts: [{ text: `--- Part ${i + 1} of ${chunks.length} ---\n${chunk}` }] }
            });
-           summarizedContext += `\n\n--- Summary of Part ${i + 1} ---\n${res.text}`;
+           return `\n\n--- Summary of Part ${i + 1} ---\n${res.text}`;
         }
       } catch (err: any) {
         console.error(`Error processing chunk ${i+1}:`, err);
         throw new Error(`分段解析失败 (Chunk ${i+1}/${chunks.length}): ${err.message}`);
       }
-    }
-    processedTextContext = summarizedContext;
+    });
+    
+    const chunkResults = await Promise.all(chunkPromises);
+    processedTextContext = chunkResults.join("");
   }
   // --- END CHUNKING LOGIC ---
 
@@ -373,11 +378,11 @@ CRITICAL: Preserve specific quotes and evidence intact. ${langInstruction}`;
       }
     }
 
-    const runOpenAiAgent = async (prompt: string) => {
+    const runOpenAiAgent = async (systemPrompt: string) => {
       try {
         const res = await openai.chat.completions.create({
           model: targetModel,
-          messages: [...openAiMessages, { role: "user", content: prompt }]
+          messages: [{ role: "system", content: systemPrompt }, ...openAiMessages]
         });
         advanceProgress();
         return res.choices[0].message.content || "";
@@ -389,23 +394,16 @@ CRITICAL: Preserve specific quotes and evidence intact. ${langInstruction}`;
       }
     };
 
-    linguisticProfile = await runOpenAiAgent(prompt1);
-    cognitiveProfile = await runOpenAiAgent(prompt2);
-    identityProfile = await runOpenAiAgent(prompt3);
+    [linguisticProfile, cognitiveProfile, identityProfile] = await Promise.all([
+      runOpenAiAgent(prompt1),
+      runOpenAiAgent(prompt2),
+      runOpenAiAgent(prompt3)
+    ]);
 
     onProgress?.(3);
-    const prompt4 = `You are Agent 4: The Master Synthesizer. Your task is to combine the analyses from three expert agents into a final, highly structured JSON Skill Profile.
+    const systemPrompt4 = `You are Agent 4: The Master Synthesizer. Your task is to combine the analyses from three expert agents into a final, highly structured JSON Skill Profile.
 
---- Agent 1 (Linguistic Profile) ---
-${linguisticProfile}
-
---- Agent 2 (Cognitive Profile) ---
-${cognitiveProfile}
-
---- Agent 3 (Identity & Workflow Profile) ---
-${identityProfile}
-
-Based on the above expert analyses AND the original documents, generate the final JSON object matching the requested schema.
+Based on the expert analyses AND the original documents, generate the final JSON object matching the requested schema.
 Ensure all fields are populated accurately based on the agents' findings.
 CRITICAL: You MUST return a valid JSON object. Do not wrap it in markdown code blocks.
 ${langInstruction}
@@ -455,6 +453,17 @@ EXAMPLE JSON OUTPUT FORMAT:
   "honestyBoundary": "boundary description"
 }`;
 
+    const userPrompt4 = `--- Agent 1 (Linguistic Profile) ---
+${linguisticProfile}
+
+--- Agent 2 (Cognitive Profile) ---
+${cognitiveProfile}
+
+--- Agent 3 (Identity & Workflow Profile) ---
+${identityProfile}
+
+Please generate the final JSON object.`;
+
     let retries = 3;
     while (retries > 0) {
       try {
@@ -462,7 +471,11 @@ EXAMPLE JSON OUTPUT FORMAT:
           model: targetModel,
           response_format: { type: "json_object" },
           max_tokens: 4096,
-          messages: [...openAiMessages, { role: "user", content: prompt4 }]
+          messages: [
+            { role: "system", content: systemPrompt4 },
+            ...openAiMessages,
+            { role: "user", content: userPrompt4 }
+          ]
         });
         finalJsonText = res4.choices[0].message.content || "";
         
@@ -514,23 +527,30 @@ EXAMPLE JSON OUTPUT FORMAT:
       }
     });
 
-    const runGeminiAgent = async (prompt: string) => {
+    const runGeminiAgent = async (systemPrompt: string) => {
       const res = await customAi.models.generateContent({
         model: targetModel,
-        contents: { parts: [...parts, { text: prompt }] },
+        systemInstruction: systemPrompt,
+        contents: { parts: parts },
       });
       advanceProgress();
       return res.text || "";
     };
 
-    linguisticProfile = await runGeminiAgent(prompt1);
-    cognitiveProfile = await runGeminiAgent(prompt2);
-    identityProfile = await runGeminiAgent(prompt3);
+    [linguisticProfile, cognitiveProfile, identityProfile] = await Promise.all([
+      runGeminiAgent(prompt1),
+      runGeminiAgent(prompt2),
+      runGeminiAgent(prompt3)
+    ]);
 
     onProgress?.(3);
-    const prompt4 = `You are Agent 4: The Master Synthesizer. Your task is to combine the analyses from three expert agents into a final, highly structured JSON Skill Profile.
+    const systemPrompt4 = `You are Agent 4: The Master Synthesizer. Your task is to combine the analyses from three expert agents into a final, highly structured JSON Skill Profile.
 
---- Agent 1 (Linguistic Profile) ---
+Based on the expert analyses AND the original documents, generate the final JSON object matching the requested schema.
+Ensure all fields are populated accurately based on the agents' findings.
+${langInstruction}`;
+
+    const userPrompt4 = `--- Agent 1 (Linguistic Profile) ---
 ${linguisticProfile}
 
 --- Agent 2 (Cognitive Profile) ---
@@ -539,14 +559,13 @@ ${cognitiveProfile}
 --- Agent 3 (Identity & Workflow Profile) ---
 ${identityProfile}
 
-Based on the above expert analyses AND the original documents, generate the final JSON object matching the requested schema.
-Ensure all fields are populated accurately based on the agents' findings.
-${langInstruction}`;
+Please generate the final JSON object.`;
 
     const response = await customAi.models.generateContent({
       model: targetModel,
+      systemInstruction: systemPrompt4,
       contents: {
-        parts: [...parts, { text: prompt4 }],
+        parts: [...parts, { text: userPrompt4 }],
       },
       config: {
         responseMimeType: "application/json",

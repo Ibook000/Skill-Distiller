@@ -2,6 +2,12 @@ import React, { useCallback } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { Upload, File, X, FileText, FileImage, FileCode, FileJson } from 'lucide-react';
 import * as mammoth from 'mammoth';
+import * as pdfjsLib from 'pdfjs-dist';
+import pdfWorkerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
+import { createWorker } from 'tesseract.js';
+
+// Configure PDF.js worker
+pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
 
 export interface UploadedFile {
   name: string;
@@ -9,6 +15,7 @@ export interface UploadedFile {
   base64: string;
   text?: string;
   size: number;
+  isProcessing?: boolean;
 }
 
 interface FileUploaderProps {
@@ -37,7 +44,7 @@ export const FileUploader: React.FC<FileUploaderProps> = ({ files, setFiles, lan
       
       reader.onabort = () => console.log('file reading was aborted');
       reader.onerror = () => console.log('file reading has failed');
-      reader.onload = () => {
+      reader.onload = async () => {
         const result = reader.result as string;
         // result is a data URL: data:mime/type;base64,....
         const base64 = result.split(',')[1];
@@ -47,12 +54,24 @@ export const FileUploader: React.FC<FileUploaderProps> = ({ files, setFiles, lan
           mimeType: file.type || 'application/octet-stream',
           base64,
           size: file.size,
+          isProcessing: file.type.startsWith('image/')
         };
 
         // Ensure PDF mime type is correct (some browsers/OS might not set it properly)
         if (file.name.toLowerCase().endsWith('.pdf')) {
           newFile.mimeType = 'application/pdf';
         }
+
+        // Add file immediately so user sees it (possibly in processing state)
+        setFiles((prev) => [...prev, newFile]);
+
+        const updateFileText = (text: string) => {
+          setFiles((prev) => prev.map(f => f.name === newFile.name ? { ...f, text, isProcessing: false } : f));
+        };
+
+        const updateFileProcessing = (isProcessing: boolean) => {
+          setFiles((prev) => prev.map(f => f.name === newFile.name ? { ...f, isProcessing } : f));
+        };
 
         const isTextFile = file.type.startsWith('text/') || 
                            file.name.match(/\.(md|json|csv|txt|rtf|log|html|xml|js|ts|jsx|tsx|py|java|c|cpp|cs|go|rs|php|rb|swift|kt)$/i);
@@ -61,26 +80,59 @@ export const FileUploader: React.FC<FileUploaderProps> = ({ files, setFiles, lan
         if (isTextFile) {
           const textReader = new FileReader();
           textReader.onload = () => {
-            newFile.text = textReader.result as string;
-            setFiles((prev) => [...prev, newFile]);
+            updateFileText(textReader.result as string);
           };
           textReader.readAsText(file);
         } else if (file.name.toLowerCase().endsWith('.docx') || file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
+          updateFileProcessing(true);
           const arrayBufferReader = new FileReader();
           arrayBufferReader.onload = async (e) => {
             try {
               const arrayBuffer = e.target?.result as ArrayBuffer;
               const result = await mammoth.extractRawText({ arrayBuffer });
-              newFile.text = result.value;
-              setFiles((prev) => [...prev, newFile]);
+              updateFileText(result.value);
             } catch (err) {
               console.error('Error parsing docx', err);
-              setFiles((prev) => [...prev, newFile]);
+              updateFileProcessing(false);
             }
           };
           arrayBufferReader.readAsArrayBuffer(file);
+        } else if (file.name.toLowerCase().endsWith('.pdf') || file.type === 'application/pdf') {
+          updateFileProcessing(true);
+          const arrayBufferReader = new FileReader();
+          arrayBufferReader.onload = async (e) => {
+            try {
+              const arrayBuffer = e.target?.result as ArrayBuffer;
+              const typedArray = new Uint8Array(arrayBuffer);
+              const pdf = await pdfjsLib.getDocument({ data: typedArray }).promise;
+              let fullText = '';
+              for (let i = 1; i <= pdf.numPages; i++) {
+                const page = await pdf.getPage(i);
+                const textContent = await page.getTextContent();
+                const pageText = textContent.items.map((item: any) => item.str).join(' ');
+                fullText += pageText + '\n\n';
+              }
+              updateFileText(fullText);
+            } catch (err: any) {
+              console.error('Error parsing pdf', err);
+              alert(`PDF 解析失败: ${err.message || '未知错误'}。请尝试将其转换为 TXT 或 Word 格式后重试。`);
+              updateFileProcessing(false);
+            }
+          };
+          arrayBufferReader.readAsArrayBuffer(file);
+        } else if (file.type.startsWith('image/')) {
+          // Perform OCR on images
+          try {
+            const worker = await createWorker('chi_sim+eng');
+            const ret = await worker.recognize(file);
+            await worker.terminate();
+            updateFileText(ret.data.text);
+          } catch (err) {
+            console.error('OCR failed', err);
+            updateFileProcessing(false);
+          }
         } else {
-          setFiles((prev) => [...prev, newFile]);
+          updateFileProcessing(false);
         }
       };
       

@@ -1,9 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { FileUploader, UploadedFile } from './components/FileUploader';
 import { DistillProcess } from './components/DistillProcess';
 import { SkillProfileView } from './components/SkillProfileView';
-import { distillSkill, SkillProfile } from './lib/gemini';
-import { Zap, AlertCircle, Sparkles, Link as LinkIcon, Loader2 } from 'lucide-react';
+import { distillSkill, SkillProfile, ApiConfig } from './lib/gemini';
+import { Zap, AlertCircle, Sparkles, Link as LinkIcon, Loader2, Settings, X } from 'lucide-react';
 
 export default function App() {
   const [files, setFiles] = useState<UploadedFile[]>([]);
@@ -12,6 +12,28 @@ export default function App() {
   const [profile, setProfile] = useState<SkillProfile | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [language, setLanguage] = useState<'zh' | 'en'>('zh');
+  
+  const [showSettings, setShowSettings] = useState(false);
+  const [apiConfig, setApiConfig] = useState<ApiConfig>({
+    provider: 'gemini',
+    apiKey: '',
+    baseUrl: '',
+    model: 'gemini-2.5-flash'
+  });
+
+  useEffect(() => {
+    const saved = localStorage.getItem('nuwa_api_config');
+    if (saved) {
+      try {
+        setApiConfig(JSON.parse(saved));
+      } catch (e) {}
+    }
+  }, []);
+
+  const saveApiConfig = (newConfig: ApiConfig) => {
+    setApiConfig(newConfig);
+    localStorage.setItem('nuwa_api_config', JSON.stringify(newConfig));
+  };
   
   const [urlInput, setUrlInput] = useState('');
   const [isFetchingUrl, setIsFetchingUrl] = useState(false);
@@ -24,7 +46,7 @@ export default function App() {
     setError(null);
     
     try {
-      const result = await distillSkill(files, language, setDistillStep);
+      const result = await distillSkill(files, language, setDistillStep, apiConfig);
       setProfile(result);
     } catch (err) {
       console.error(err);
@@ -105,7 +127,7 @@ export default function App() {
         size: mockText.length
       };
       
-      const result = await distillSkill([mockFile], language, setDistillStep);
+      const result = await distillSkill([mockFile], language, setDistillStep, apiConfig);
       setProfile(result);
     } catch (err) {
       console.error(err);
@@ -126,12 +148,21 @@ export default function App() {
             <p className="font-mono text-lg md:text-xl font-bold mt-2 uppercase tracking-widest text-neon-green bg-brutal-black inline-block px-2">{language === 'zh' ? '技能蒸馏器 (Skill Distiller)' : 'Skill Distiller'}</p>
           </div>
           <div className="flex flex-col items-end space-y-2">
-            <button 
-              onClick={() => setLanguage(l => l === 'zh' ? 'en' : 'zh')} 
-              className="brutal-btn px-3 py-1 text-sm font-mono"
-            >
-              {language === 'zh' ? 'EN' : '中文'}
-            </button>
+            <div className="flex space-x-2">
+              <button 
+                onClick={() => setShowSettings(true)} 
+                className="brutal-btn px-2 py-1 flex items-center justify-center bg-white hover:bg-gray-100"
+                title="API Settings"
+              >
+                <Settings className="h-4 w-4" />
+              </button>
+              <button 
+                onClick={() => setLanguage(l => l === 'zh' ? 'en' : 'zh')} 
+                className="brutal-btn px-3 py-1 text-sm font-mono"
+              >
+                {language === 'zh' ? 'EN' : '中文'}
+              </button>
+            </div>
             <div className="hidden md:block font-mono text-xs text-right uppercase mt-2">
               <p>{language === 'zh' ? '版本 1.2' : 'Version 1.2'}</p>
               <p>{language === 'zh' ? '系统状态：在线' : 'System: Online'}</p>
@@ -227,11 +258,15 @@ export default function App() {
                 
                 <button 
                   onClick={handleDistill}
-                  disabled={files.length === 0}
-                  className="brutal-btn w-full py-4 mt-8 flex items-center justify-center space-x-2 text-lg"
+                  disabled={files.length === 0 || files.some(f => f.isProcessing)}
+                  className="brutal-btn w-full py-4 mt-8 flex items-center justify-center space-x-2 text-lg disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <Zap className="h-5 w-5" />
-                  <span>{language === 'zh' ? '开始蒸馏人格' : 'Distill Persona'}</span>
+                  <span>
+                    {files.some(f => f.isProcessing) 
+                      ? (language === 'zh' ? '文件处理中...' : 'Processing Files...') 
+                      : (language === 'zh' ? '开始蒸馏人格' : 'Distill Persona')}
+                  </span>
                 </button>
               </div>
             </div>
@@ -242,10 +277,92 @@ export default function App() {
           )}
 
           {profile && !isDistilling && (
-            <SkillProfileView profile={profile} onReset={handleReset} language={language} />
+            <SkillProfileView profile={profile} onUpdateProfile={setProfile} onReset={handleReset} language={language} />
           )}
         </main>
       </div>
+
+      {/* Settings Modal */}
+      {showSettings && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white brutal-border p-6 w-full max-w-md relative">
+            <button 
+              onClick={() => setShowSettings(false)}
+              className="absolute top-4 right-4 text-gray-500 hover:text-black"
+            >
+              <X className="w-6 h-6" />
+            </button>
+            <h2 className="text-2xl font-display uppercase mb-6">{language === 'zh' ? 'API 设置' : 'API Settings'}</h2>
+            <div className="space-y-4">
+              <div>
+                <label className="block font-mono text-sm mb-1 font-bold">API Provider</label>
+                <div className="flex space-x-4">
+                  <label className="flex items-center space-x-2 cursor-pointer">
+                    <input 
+                      type="radio" 
+                      name="provider" 
+                      value="gemini" 
+                      checked={apiConfig.provider === 'gemini'} 
+                      onChange={() => saveApiConfig({...apiConfig, provider: 'gemini', model: 'gemini-2.5-flash'})}
+                      className="text-neon-green focus:ring-neon-green"
+                    />
+                    <span className="font-mono text-sm">Google Gemini</span>
+                  </label>
+                  <label className="flex items-center space-x-2 cursor-pointer">
+                    <input 
+                      type="radio" 
+                      name="provider" 
+                      value="openai" 
+                      checked={apiConfig.provider === 'openai'} 
+                      onChange={() => saveApiConfig({...apiConfig, provider: 'openai', model: 'gpt-4o-mini'})}
+                      className="text-neon-green focus:ring-neon-green"
+                    />
+                    <span className="font-mono text-sm">OpenAI Compatible</span>
+                  </label>
+                </div>
+              </div>
+              <div>
+                <label className="block font-mono text-sm mb-1 font-bold">API Key</label>
+                <input
+                  type="password"
+                  value={apiConfig.apiKey || ''}
+                  onChange={e => saveApiConfig({...apiConfig, apiKey: e.target.value})}
+                  className="w-full brutal-border p-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-neon-green"
+                  placeholder={language === 'zh' ? '留空则使用默认 Key' : 'Leave empty to use default'}
+                />
+              </div>
+              <div>
+                <label className="block font-mono text-sm mb-1 font-bold">Base URL</label>
+                <input
+                  type="text"
+                  value={apiConfig.baseUrl || ''}
+                  onChange={e => saveApiConfig({...apiConfig, baseUrl: e.target.value})}
+                  className="w-full brutal-border p-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-neon-green"
+                  placeholder={apiConfig.provider === 'openai' ? "https://api.openai.com/v1" : "https://generativelanguage.googleapis.com"}
+                />
+              </div>
+              <div>
+                <label className="block font-mono text-sm mb-1 font-bold">Model</label>
+                <input
+                  type="text"
+                  value={apiConfig.model || ''}
+                  onChange={e => saveApiConfig({...apiConfig, model: e.target.value})}
+                  className="w-full brutal-border p-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-neon-green"
+                  placeholder={apiConfig.provider === 'openai' ? "gpt-4o-mini" : "gemini-2.5-flash"}
+                />
+              </div>
+            </div>
+            <div className="mt-8 flex justify-end">
+              <button
+                onClick={() => setShowSettings(false)}
+                className="brutal-btn px-6 py-2 bg-neon-green text-sm font-bold"
+              >
+                {language === 'zh' ? '保存并关闭' : 'Save & Close'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

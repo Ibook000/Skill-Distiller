@@ -3,7 +3,7 @@ import { FileUploader, UploadedFile } from './components/FileUploader';
 import { DistillProcess } from './components/DistillProcess';
 import { SkillProfileView } from './components/SkillProfileView';
 import { distillSkill, SkillProfile, ApiConfig } from './lib/gemini';
-import { Zap, AlertCircle, Sparkles, Link as LinkIcon, Loader2, Settings, X } from 'lucide-react';
+import { Zap, AlertCircle, Sparkles, Link as LinkIcon, Loader2, Settings, X, Sun, Moon } from 'lucide-react';
 
 export default function App() {
   const [files, setFiles] = useState<UploadedFile[]>([]);
@@ -12,6 +12,7 @@ export default function App() {
   const [profile, setProfile] = useState<SkillProfile | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [language, setLanguage] = useState<'zh' | 'en'>('zh');
+  const [isDarkMode, setIsDarkMode] = useState(false);
   
   const [showSettings, setShowSettings] = useState(false);
   const [apiConfig, setApiConfig] = useState<ApiConfig>({
@@ -28,7 +29,25 @@ export default function App() {
         setApiConfig(JSON.parse(saved));
       } catch (e) {}
     }
+
+    const savedTheme = localStorage.getItem('nuwa_theme');
+    if (savedTheme === 'dark') {
+      setIsDarkMode(true);
+      document.documentElement.classList.add('dark');
+    }
   }, []);
+
+  const toggleDarkMode = () => {
+    const newMode = !isDarkMode;
+    setIsDarkMode(newMode);
+    if (newMode) {
+      document.documentElement.classList.add('dark');
+      localStorage.setItem('nuwa_theme', 'dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+      localStorage.setItem('nuwa_theme', 'light');
+    }
+  };
 
   const saveApiConfig = (newConfig: ApiConfig) => {
     setApiConfig(newConfig);
@@ -138,11 +157,11 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-gallery-white p-4 md:p-8">
+    <div className="min-h-screen bg-[var(--bg-primary)] p-4 md:p-8 transition-colors duration-300">
       <div className="max-w-5xl mx-auto">
         
         {/* Header */}
-        <header className="mb-12 border-b-4 border-brutal-black pb-6 flex items-end justify-between">
+        <header className="mb-12 border-b-4 border-brutal-black dark:border-white pb-6 flex items-end justify-between">
           <div>
             <h1 className="font-display text-6xl md:text-8xl uppercase tracking-tighter leading-none">{language === 'zh' ? '女娲 Nuwa' : 'Nuwa'}</h1>
             <p className="font-mono text-lg md:text-xl font-bold mt-2 uppercase tracking-widest text-neon-green bg-brutal-black inline-block px-2">{language === 'zh' ? '技能蒸馏器 (Skill Distiller)' : 'Skill Distiller'}</p>
@@ -150,8 +169,15 @@ export default function App() {
           <div className="flex flex-col items-end space-y-2">
             <div className="flex space-x-2">
               <button 
+                onClick={toggleDarkMode} 
+                className="brutal-btn px-2 py-1 flex items-center justify-center"
+                title={isDarkMode ? "Light Mode" : "Dark Mode"}
+              >
+                {isDarkMode ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+              </button>
+              <button 
                 onClick={() => setShowSettings(true)} 
-                className="brutal-btn px-2 py-1 flex items-center justify-center bg-white hover:bg-gray-100"
+                className="brutal-btn px-2 py-1 flex items-center justify-center"
                 title="API Settings"
               >
                 <Settings className="h-4 w-4" />
@@ -188,9 +214,9 @@ export default function App() {
                 <FileUploader files={files} setFiles={setFiles} language={language} />
                 
                 {/* URL Input Section */}
-                <div className="brutal-border bg-white p-6">
-                  <div className="flex items-center space-x-2 mb-4 border-b-2 border-brutal-black pb-2">
-                    <LinkIcon className="h-5 w-5 text-blue-600" />
+                <div className="brutal-border bg-[var(--card-bg)] p-6 transition-colors duration-300">
+                  <div className="flex items-center space-x-2 mb-4 border-b-2 border-brutal-black dark:border-white pb-2">
+                    <LinkIcon className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                     <h3 className="font-display text-xl uppercase">{language === 'zh' ? '或者输入网页链接' : 'Or Import from URL'}</h3>
                   </div>
                   <div className="flex flex-col sm:flex-row gap-3">
@@ -200,7 +226,7 @@ export default function App() {
                       onChange={(e) => setUrlInput(e.target.value)}
                       onKeyDown={(e) => e.key === 'Enter' && handleAddUrl()}
                       placeholder={language === 'zh' ? 'https://example.com/blog-post' : 'https://example.com/blog-post'}
-                      className="flex-1 brutal-border px-4 py-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-neon-green"
+                      className="flex-1 brutal-border px-4 py-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-neon-green bg-[var(--bg-primary)] transition-colors duration-300"
                     />
                     <button 
                       onClick={handleAddUrl}
@@ -217,14 +243,14 @@ export default function App() {
                       )}
                     </button>
                   </div>
-                  <p className="font-mono text-xs text-gray-500 mt-3">
+                  <p className="font-mono text-xs text-gray-500 dark:text-gray-400 mt-3">
                     {language === 'zh' ? '支持抓取博客文章、公开主页等纯文本内容。' : 'Supports extracting text from blog posts, public profiles, etc.'}
                   </p>
                 </div>
 
                 {/* Example Section */}
-                <div className="brutal-border bg-white p-6">
-                  <div className="flex items-center space-x-2 mb-4 border-b-2 border-brutal-black pb-2">
+                <div className="brutal-border bg-[var(--card-bg)] p-6 transition-colors duration-300">
+                  <div className="flex items-center space-x-2 mb-4 border-b-2 border-brutal-black dark:border-white pb-2">
                     <Sparkles className="h-5 w-5 text-neon-green" />
                     <h3 className="font-display text-xl uppercase">{language === 'zh' ? '或者尝试示例' : 'Or Try Examples'}</h3>
                   </div>
@@ -284,15 +310,15 @@ export default function App() {
 
       {/* Settings Modal */}
       {showSettings && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white brutal-border p-6 w-full max-w-md relative">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+          <div className="bg-[var(--card-bg)] brutal-border dark:border-white p-6 w-full max-w-md relative shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] dark:shadow-[8px_8px_0px_0px_rgba(255,255,255,1)] transition-colors duration-300">
             <button 
               onClick={() => setShowSettings(false)}
-              className="absolute top-4 right-4 text-gray-500 hover:text-black"
+              className="absolute top-4 right-4 text-gray-500 hover:text-[var(--text-primary)]"
             >
               <X className="w-6 h-6" />
             </button>
-            <h2 className="text-2xl font-display uppercase mb-6">{language === 'zh' ? 'API 设置' : 'API Settings'}</h2>
+            <h2 className="text-2xl font-display uppercase mb-6 border-b-2 border-brutal-black dark:border-white pb-2">{language === 'zh' ? 'API 设置' : 'API Settings'}</h2>
             <div className="space-y-4">
               <div>
                 <label className="block font-mono text-sm mb-1 font-bold">API Provider</label>
@@ -327,7 +353,7 @@ export default function App() {
                   type="password"
                   value={apiConfig.apiKey || ''}
                   onChange={e => saveApiConfig({...apiConfig, apiKey: e.target.value})}
-                  className="w-full brutal-border p-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-neon-green"
+                  className="w-full brutal-border p-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-neon-green bg-[var(--bg-primary)] transition-colors duration-300"
                   placeholder={language === 'zh' ? '留空则使用默认 Key' : 'Leave empty to use default'}
                 />
               </div>
@@ -337,7 +363,7 @@ export default function App() {
                   type="text"
                   value={apiConfig.baseUrl || ''}
                   onChange={e => saveApiConfig({...apiConfig, baseUrl: e.target.value})}
-                  className="w-full brutal-border p-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-neon-green"
+                  className="w-full brutal-border p-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-neon-green bg-[var(--bg-primary)] transition-colors duration-300"
                   placeholder={apiConfig.provider === 'openai' ? "https://api.openai.com/v1" : "https://generativelanguage.googleapis.com"}
                 />
               </div>
@@ -347,7 +373,7 @@ export default function App() {
                   type="text"
                   value={apiConfig.model || ''}
                   onChange={e => saveApiConfig({...apiConfig, model: e.target.value})}
-                  className="w-full brutal-border p-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-neon-green"
+                  className="w-full brutal-border p-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-neon-green bg-[var(--bg-primary)] transition-colors duration-300"
                   placeholder={apiConfig.provider === 'openai' ? "gpt-4o-mini" : "gemini-2.5-flash"}
                 />
               </div>
@@ -355,7 +381,7 @@ export default function App() {
             <div className="mt-8 flex justify-end">
               <button
                 onClick={() => setShowSettings(false)}
-                className="brutal-btn px-6 py-2 bg-neon-green text-sm font-bold"
+                className="brutal-btn px-6 py-2 bg-neon-green text-brutal-black text-sm font-bold"
               >
                 {language === 'zh' ? '保存并关闭' : 'Save & Close'}
               </button>

@@ -259,6 +259,24 @@ export const distillSkill = async (
   apiConfig?: ApiConfig
 ): Promise<SkillProfile> => {
   const provider = apiConfig?.provider || 'gemini';
+  
+  // Validate API Key before starting
+  if (provider === 'openai') {
+    const key = apiConfig?.apiKey || process.env.OPENAI_API_KEY;
+    if (!key) {
+      throw new Error(language === 'zh' 
+        ? '未提供 OpenAI API Key。请在设置中配置 API Key 后重试。' 
+        : 'OpenAI API Key not provided. Please configure your API Key in settings and try again.');
+    }
+  } else if (provider === 'gemini') {
+    const key = apiConfig?.apiKey || process.env.GEMINI_API_KEY;
+    if (!key) {
+      throw new Error(language === 'zh' 
+        ? '未检测到 Gemini API Key。请在设置中配置或确保环境变量已设置。' 
+        : 'Gemini API Key not detected. Please configure it in settings or ensure the environment variable is set.');
+    }
+  }
+
   const langInstruction = language === 'zh' 
     ? 'CRITICAL: Please output in Chinese (zh-CN).' 
     : 'CRITICAL: Please output in English.';
@@ -294,48 +312,57 @@ export const distillSkill = async (
       chunks.push(fullText.substring(i, i + MAX_CHUNK_SIZE));
     }
     
-    const chunkPromises = chunks.map(async (chunk, i) => {
-      const chunkSystemPrompt = `You are an expert document analyzer. The content is too long, so we are processing it in chunks. Please extract and summarize the following information from this chunk to help build a persona profile later:
+    const chunkResults: string[] = [];
+    const CONCURRENCY_LIMIT = 3;
+    
+    for (let i = 0; i < chunks.length; i += CONCURRENCY_LIMIT) {
+      const batch = chunks.slice(i, i + CONCURRENCY_LIMIT);
+      const batchPromises = batch.map(async (chunk, index) => {
+        const chunkIndex = i + index;
+        const chunkSystemPrompt = `You are an expert document analyzer. The content is too long, so we are processing it in chunks. Please extract and summarize the following information from this chunk to help build a persona profile later:
 1. Linguistic traits (tone, catchphrases, style)
 2. Cognitive traits (mental models, values, heuristics, quotes)
 3. Identity (background, role, workflow)
 CRITICAL: Preserve specific quotes and evidence intact. ${langInstruction}`;
 
-      try {
-        if (provider === 'openai') {
-           const openai = new OpenAI({
-             apiKey: apiConfig?.apiKey || process.env.OPENAI_API_KEY || '',
-             baseURL: apiConfig?.baseUrl || undefined,
-             dangerouslyAllowBrowser: true
-           });
-           const res = await openai.chat.completions.create({
-             model: apiConfig?.model || "gpt-4o-mini",
-             messages: [
-               { role: "system", content: chunkSystemPrompt },
-               { role: "user", content: `--- Part ${i + 1} of ${chunks.length} ---\n${chunk}` }
-             ]
-           });
-           return `\n\n--- Summary of Part ${i + 1} ---\n${res.choices[0].message.content}`;
-        } else {
-           const clientOptions: any = {};
-           if (apiConfig?.apiKey) clientOptions.apiKey = apiConfig.apiKey;
-           else clientOptions.apiKey = process.env.GEMINI_API_KEY;
-           if (apiConfig?.baseUrl) clientOptions.baseUrl = apiConfig.baseUrl;
-           const customAi = new GoogleGenAI(clientOptions);
-           const res = await customAi.models.generateContent({
-             model: apiConfig?.model || "gemini-2.5-flash",
-             systemInstruction: chunkSystemPrompt,
-             contents: { parts: [{ text: `--- Part ${i + 1} of ${chunks.length} ---\n${chunk}` }] }
-           });
-           return `\n\n--- Summary of Part ${i + 1} ---\n${res.text}`;
+        try {
+          if (provider === 'openai') {
+             const openai = new OpenAI({
+               apiKey: apiConfig?.apiKey || process.env.OPENAI_API_KEY || '',
+               baseURL: apiConfig?.baseUrl || undefined,
+               dangerouslyAllowBrowser: true
+             });
+             const res = await openai.chat.completions.create({
+               model: apiConfig?.model || "gpt-4o-mini",
+               messages: [
+                 { role: "system", content: chunkSystemPrompt },
+                 { role: "user", content: `--- Part ${chunkIndex + 1} of ${chunks.length} ---\n${chunk}` }
+               ]
+             });
+             return `\n\n--- Summary of Part ${chunkIndex + 1} ---\n${res.choices[0].message.content}`;
+          } else {
+             const clientOptions: any = {};
+             if (apiConfig?.apiKey) clientOptions.apiKey = apiConfig.apiKey;
+             else clientOptions.apiKey = process.env.GEMINI_API_KEY;
+             if (apiConfig?.baseUrl) clientOptions.baseUrl = apiConfig.baseUrl;
+             const customAi = new GoogleGenAI(clientOptions);
+             const res = await customAi.models.generateContent({
+               model: apiConfig?.model || "gemini-2.5-flash",
+               systemInstruction: chunkSystemPrompt,
+               contents: { parts: [{ text: `--- Part ${chunkIndex + 1} of ${chunks.length} ---\n${chunk}` }] }
+             });
+             return `\n\n--- Summary of Part ${chunkIndex + 1} ---\n${res.text}`;
+          }
+        } catch (err: any) {
+          console.error(`Error processing chunk ${chunkIndex+1}:`, err);
+          throw new Error(`分段解析失败 (Chunk ${chunkIndex+1}/${chunks.length}): ${err.message}`);
         }
-      } catch (err: any) {
-        console.error(`Error processing chunk ${i+1}:`, err);
-        throw new Error(`分段解析失败 (Chunk ${i+1}/${chunks.length}): ${err.message}`);
-      }
-    });
+      });
+      
+      const batchResults = await Promise.all(batchPromises);
+      chunkResults.push(...batchResults);
+    }
     
-    const chunkResults = await Promise.all(chunkPromises);
     processedTextContext = chunkResults.join("");
   }
   // --- END CHUNKING LOGIC ---
@@ -485,8 +512,16 @@ Please generate the final JSON object.`;
           continue;
         }
         
+        // Robust JSON parsing: strip markdown code blocks if present
+        let cleanJsonText = finalJsonText;
+        const jsonMatch = finalJsonText.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          cleanJsonText = jsonMatch[0];
+        }
+        
         // Validate JSON format
-        JSON.parse(finalJsonText);
+        JSON.parse(cleanJsonText);
+        finalJsonText = cleanJsonText;
         break; // Success, break out of retry loop
       } catch (error: any) {
         if (error.message?.includes('Connection error') || error.message?.includes('Failed to fetch')) {
@@ -660,12 +695,22 @@ Please generate the final JSON object.`;
         },
       },
     });
-    finalJsonText = response.text || "";
+    let cleanJsonText = response.text || "";
+    const jsonMatch = cleanJsonText.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+      cleanJsonText = jsonMatch[0];
+    }
+    finalJsonText = cleanJsonText;
   }
 
   if (!finalJsonText) {
     throw new Error("Failed to generate skill profile");
   }
 
-  return JSON.parse(finalJsonText) as SkillProfile;
+  try {
+    return JSON.parse(finalJsonText) as SkillProfile;
+  } catch (err) {
+    console.error("JSON Parse Error on:", finalJsonText);
+    throw new Error("模型返回的 JSON 格式有误，无法解析。请重试。");
+  }
 };

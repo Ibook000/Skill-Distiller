@@ -11,30 +11,51 @@
   --color-gallery-white: #FFFFFF;
 }
 
+:root {
+  --bg-primary: var(--color-gallery-white);
+  --text-primary: var(--color-brutal-black);
+  --border-primary: var(--color-brutal-black);
+  --btn-bg: var(--color-gallery-white);
+  --card-bg: var(--color-gallery-white);
+}
+
+.dark {
+  --bg-primary: #121212;
+  --text-primary: var(--color-gallery-white);
+  --border-primary: var(--color-gallery-white);
+  --btn-bg: #1e1e1e;
+  --card-bg: #1e1e1e;
+}
+
 body {
-  background-color: var(--color-gallery-white);
-  color: var(--color-brutal-black);
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
   font-family: var(--font-sans);
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 /* Thick borders for brutalist feel */
 .brutal-border {
-  border: 2px solid var(--color-brutal-black);
+  border: 2px solid var(--border-primary);
 }
 
 .brutal-border-b {
-  border-bottom: 2px solid var(--color-brutal-black);
+  border-bottom: 2px solid var(--border-primary);
+}
+
+.brutal-border-l {
+  border-left: 2px solid var(--border-primary);
 }
 
 .brutal-border-r {
-  border-right: 2px solid var(--color-brutal-black);
+  border-right: 2px solid var(--border-primary);
 }
 
 /* Neon hover effect */
 .brutal-btn {
-  background-color: var(--color-gallery-white);
-  color: var(--color-brutal-black);
-  border: 2px solid var(--color-brutal-black);
+  background-color: var(--btn-bg);
+  color: var(--text-primary);
+  border: 2px solid var(--border-primary);
   transition: all 0.2s ease;
   font-weight: 600;
   text-transform: uppercase;
@@ -42,13 +63,14 @@ body {
 
 .brutal-btn:hover:not(:disabled) {
   background-color: var(--color-neon-green);
+  color: var(--color-brutal-black);
   transform: translate(-2px, -2px);
-  box-shadow: 4px 4px 0px var(--color-brutal-black);
+  box-shadow: 4px 4px 0px var(--border-primary);
 }
 
 .brutal-btn:active:not(:disabled) {
   transform: translate(0px, 0px);
-  box-shadow: 0px 0px 0px var(--color-brutal-black);
+  box-shadow: 0px 0px 0px var(--border-primary);
 }
 
 .brutal-btn:disabled {

@@ -1,6 +1,6 @@
 import React, { useCallback } from 'react';
-import { useDropzone, type Accept, type DropzoneOptions } from 'react-dropzone';
-import { Upload, File, X, FileText, FileImage, FileCode, FileJson } from 'lucide-react';
+import { useDropzone } from 'react-dropzone';
+import { Upload, File, X, FileText, FileImage, FileCode, FileJson, Loader2 } from 'lucide-react';
 import * as mammoth from 'mammoth';
 import * as pdfjsLib from 'pdfjs-dist';
 import pdfWorkerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
@@ -122,14 +122,18 @@ export const FileUploader: React.FC<FileUploaderProps> = ({ files, setFiles, lan
           arrayBufferReader.readAsArrayBuffer(file);
         } else if (file.type.startsWith('image/')) {
           // Perform OCR on images
+          let worker: any = null;
           try {
-            const worker = await createWorker('chi_sim+eng');
+            worker = await createWorker('chi_sim+eng');
             const ret = await worker.recognize(file);
-            await worker.terminate();
             updateFileText(ret.data.text);
           } catch (err) {
             console.error('OCR failed', err);
             updateFileProcessing(false);
+          } finally {
+            if (worker) {
+              await worker.terminate();
+            }
           }
         } else {
           updateFileProcessing(false);
@@ -140,28 +144,20 @@ export const FileUploader: React.FC<FileUploaderProps> = ({ files, setFiles, lan
     });
   }, [setFiles]);
 
-  const accept: Accept = {
-    'application/pdf': ['.pdf'],
-    'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx'],
-    'text/plain': ['.txt', '.md', '.csv', '.log'],
-    'application/json': ['.json'],
-    'image/*': ['.png', '.jpg', '.jpeg', '.webp'],
-    'text/html': ['.html', '.htm'],
-    'text/javascript': ['.js', '.jsx'],
-    'text/typescript': ['.ts', '.tsx'],
-    'text/x-python': ['.py']
-  };
-
-  const dropzoneOptions: DropzoneOptions = {
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({ 
     onDrop,
-    accept,
-    multiple: true,
-    onDragEnter: undefined,
-    onDragOver: undefined,
-    onDragLeave: undefined
-  };
-
-  const { getRootProps, getInputProps, isDragActive } = useDropzone(dropzoneOptions);
+    accept: {
+      'application/pdf': ['.pdf'],
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx'],
+      'text/plain': ['.txt', '.md', '.csv', '.log'],
+      'application/json': ['.json'],
+      'image/*': ['.png', '.jpg', '.jpeg', '.webp'],
+      'text/html': ['.html', '.htm'],
+      'text/javascript': ['.js', '.jsx'],
+      'text/typescript': ['.ts', '.tsx'],
+      'text/x-python': ['.py']
+    }
+  });
 
   const removeFile = (index: number) => {
     setFiles((prev) => prev.filter((_, i) => i !== index));
@@ -171,31 +167,42 @@ export const FileUploader: React.FC<FileUploaderProps> = ({ files, setFiles, lan
     <div className="w-full">
       <div 
         {...getRootProps()} 
-        className={`brutal-border p-12 text-center cursor-pointer transition-colors ${isDragActive ? 'bg-neon-green/20' : 'bg-white hover:bg-gray-50'}`}
+        className={`brutal-border p-12 text-center cursor-pointer transition-colors duration-300 ${
+          isDragActive ? 'bg-neon-green/20' : 'bg-[var(--card-bg)] hover:bg-gray-50 dark:hover:bg-gray-800'
+        }`}
       >
         <input {...getInputProps()} />
-        <Upload className="mx-auto h-12 w-12 mb-4" />
-        <h3 className="font-display text-2xl uppercase mb-2">{language === 'zh' ? '将文件拖拽至此' : 'Drop files here'}</h3>
-        <p className="font-mono text-sm text-gray-600">{language === 'zh' ? '上传聊天记录、代码、简历或文章进行蒸馏。' : 'Upload chat logs, code, resumes, or writings to distill.'}</p>
-        <p className="font-mono text-xs text-gray-400 mt-2">{language === 'zh' ? '支持 PDF, DOCX, TXT, MD, CSV, JSON, 代码, 图片' : 'Supports PDF, DOCX, TXT, MD, CSV, JSON, Code, Images'}</p>
+        <Upload className="mx-auto h-12 w-12 mb-4 text-[var(--text-primary)]" />
+        <h3 className="font-display text-2xl uppercase mb-2 text-[var(--text-primary)]">{language === 'zh' ? '将文件拖拽至此' : 'Drop files here'}</h3>
+        <p className="font-mono text-sm text-gray-600 dark:text-gray-400">{language === 'zh' ? '上传聊天记录、代码、简历或文章进行蒸馏。' : 'Upload chat logs, code, resumes, or writings to distill.'}</p>
+        <p className="font-mono text-xs text-gray-400 dark:text-gray-500 mt-2">{language === 'zh' ? '支持 PDF, DOCX, TXT, MD, CSV, JSON, 代码, 图片' : 'Supports PDF, DOCX, TXT, MD, CSV, JSON, Code, Images'}</p>
       </div>
 
       {files.length > 0 && (
         <div className="mt-8">
-          <h4 className="font-mono text-sm uppercase font-bold mb-4">{language === 'zh' ? '等待蒸馏' : 'Queued for Distillation'} ({files.length})</h4>
+          <h4 className="font-mono text-sm uppercase font-bold mb-4 text-[var(--text-primary)]">{language === 'zh' ? '等待蒸馏' : 'Queued for Distillation'} ({files.length})</h4>
           <ul className="space-y-2">
             {files.map((file, idx) => (
-              <li key={idx} className="flex items-center justify-between p-3 brutal-border bg-white">
+              <li key={idx} className="flex items-center justify-between p-3 brutal-border bg-[var(--card-bg)] transition-colors duration-300">
                 <div className="flex items-center space-x-3 overflow-hidden">
-                  {getFileIcon(file)}
-                  <span className="font-mono text-sm truncate">{file.name}</span>
+                  {file.isProcessing ? (
+                    <Loader2 className="h-5 w-5 flex-shrink-0 text-neon-green animate-spin" />
+                  ) : (
+                    getFileIcon(file)
+                  )}
+                  <span className="font-mono text-sm truncate text-[var(--text-primary)]">{file.name}</span>
                   <span className="font-mono text-xs text-gray-500 flex-shrink-0">
                     {(file.size / 1024).toFixed(1)} KB
                   </span>
+                  {file.isProcessing && (
+                    <span className="font-mono text-[10px] uppercase bg-neon-green text-brutal-black px-1 font-bold animate-pulse">
+                      {language === 'zh' ? '处理中...' : 'Processing...'}
+                    </span>
+                  )}
                 </div>
                 <button 
                   onClick={(e) => { e.stopPropagation(); removeFile(idx); }}
-                  className="p-1 hover:bg-gray-200 rounded"
+                  className="p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded transition-colors text-[var(--text-primary)]"
                 >
                   <X className="h-4 w-4" />
                 </button>

@@ -56,8 +56,8 @@ export const DistillProcess: React.FC<{ language: 'zh' | 'en', currentStep: numb
               }}
               className={`relative overflow-hidden flex items-center p-4 brutal-border transition-colors duration-300 ${
                 isActive ? 'bg-brutal-black text-neon-green scale-[1.02]' : 
-                isCompleted ? 'bg-white text-brutal-black' : 
-                'bg-gray-50 text-gray-400 border-gray-300'
+                isCompleted ? 'bg-[var(--card-bg)] text-[var(--text-primary)]' : 
+                'bg-[var(--bg-primary)] text-gray-400 border-gray-300 dark:border-gray-700'
               }`}
             >
               {/* Subtle scanning line effect for the active step */}

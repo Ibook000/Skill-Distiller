@@ -15,24 +15,45 @@ export default function App() {
   
   const [showSettings, setShowSettings] = useState(false);
   const [apiConfig, setApiConfig] = useState<ApiConfig>({
-    provider: 'gemini',
     apiKey: '',
-    baseUrl: '',
-    model: 'gemini-2.5-flash'
+    baseUrl: 'https://api.deepseek.com',
+    model: 'deepseek-chat'
   });
+
+  function normalizeConfigInput(value: string) {
+    return value
+      .replace(/[\u200B-\u200D\uFEFF\u00A0\u3000]/g, '')
+      .trim()
+      .replace(/^[`"'“”‘’]+|[`"'“”‘’]+$/g, '')
+      .trim();
+  }
 
   useEffect(() => {
     const saved = localStorage.getItem('nuwa_api_config');
     if (saved) {
       try {
-        setApiConfig(JSON.parse(saved));
-      } catch (e) {}
+        const parsed = JSON.parse(saved);
+        const normalizedConfig = {
+          apiKey: normalizeConfigInput(parsed.apiKey || ''),
+          baseUrl: normalizeConfigInput(parsed.baseUrl || '') || 'https://api.deepseek.com',
+          model: parsed.model && !String(parsed.model).includes('gemini')
+            ? normalizeConfigInput(parsed.model)
+            : 'deepseek-chat'
+        };
+        setApiConfig(normalizedConfig);
+        localStorage.setItem('nuwa_api_config', JSON.stringify(normalizedConfig));
+      } catch {}
     }
   }, []);
 
   const saveApiConfig = (newConfig: ApiConfig) => {
-    setApiConfig(newConfig);
-    localStorage.setItem('nuwa_api_config', JSON.stringify(newConfig));
+    const normalizedConfig: ApiConfig = {
+      apiKey: normalizeConfigInput(newConfig.apiKey || ''),
+      baseUrl: normalizeConfigInput(newConfig.baseUrl || '') || 'https://api.deepseek.com',
+      model: normalizeConfigInput(newConfig.model || '') || 'deepseek-chat'
+    };
+    setApiConfig(normalizedConfig);
+    localStorage.setItem('nuwa_api_config', JSON.stringify(normalizedConfig));
   };
   
   const [urlInput, setUrlInput] = useState('');
@@ -295,31 +316,13 @@ export default function App() {
             <h2 className="text-2xl font-display uppercase mb-6">{language === 'zh' ? 'API 设置' : 'API Settings'}</h2>
             <div className="space-y-4">
               <div>
-                <label className="block font-mono text-sm mb-1 font-bold">API Provider</label>
-                <div className="flex space-x-4">
-                  <label className="flex items-center space-x-2 cursor-pointer">
-                    <input 
-                      type="radio" 
-                      name="provider" 
-                      value="gemini" 
-                      checked={apiConfig.provider === 'gemini'} 
-                      onChange={() => saveApiConfig({...apiConfig, provider: 'gemini', model: 'gemini-2.5-flash'})}
-                      className="text-neon-green focus:ring-neon-green"
-                    />
-                    <span className="font-mono text-sm">Google Gemini</span>
-                  </label>
-                  <label className="flex items-center space-x-2 cursor-pointer">
-                    <input 
-                      type="radio" 
-                      name="provider" 
-                      value="openai" 
-                      checked={apiConfig.provider === 'openai'} 
-                      onChange={() => saveApiConfig({...apiConfig, provider: 'openai', model: 'gpt-4o-mini'})}
-                      className="text-neon-green focus:ring-neon-green"
-                    />
-                    <span className="font-mono text-sm">OpenAI Compatible</span>
-                  </label>
+                <label className="block font-mono text-sm mb-1 font-bold">API Type</label>
+                <div className="brutal-border bg-gray-50 px-3 py-2 font-mono text-sm">
+                  DeepSeek Chat Completions
                 </div>
+                <p className="font-mono text-xs text-gray-500 mt-2">
+                  {language === 'zh' ? '浣跨敤 DeepSeek chat completions 鍏煎鎺ュ彛锛屾渶缁堣緭鍑轰互 JSON 涓轰富銆?' : 'Uses the DeepSeek chat completions compatible endpoint and requests JSON for the final result.'}
+                </p>
               </div>
               <div>
                 <label className="block font-mono text-sm mb-1 font-bold">API Key</label>
@@ -338,7 +341,7 @@ export default function App() {
                   value={apiConfig.baseUrl || ''}
                   onChange={e => saveApiConfig({...apiConfig, baseUrl: e.target.value})}
                   className="w-full brutal-border p-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-neon-green"
-                  placeholder={apiConfig.provider === 'openai' ? "https://api.openai.com/v1" : "https://generativelanguage.googleapis.com"}
+                  placeholder="https://api.deepseek.com"
                 />
               </div>
               <div>
@@ -348,7 +351,7 @@ export default function App() {
                   value={apiConfig.model || ''}
                   onChange={e => saveApiConfig({...apiConfig, model: e.target.value})}
                   className="w-full brutal-border p-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-neon-green"
-                  placeholder={apiConfig.provider === 'openai' ? "gpt-4o-mini" : "gemini-2.5-flash"}
+                  placeholder="deepseek-chat"
                 />
               </div>
             </div>

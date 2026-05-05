@@ -17,11 +17,15 @@ interface SkillProfileViewProps {
 export const SkillProfileView: React.FC<SkillProfileViewProps> = ({ profile, onUpdateProfile, onReset, language }) => {
   const [copied, setCopied] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
+  const [previewMode, setPreviewMode] = useState<'single' | 'multi'>('single');
+  const [selectedFile, setSelectedFile] = useState<string>('SKILL.md');
   const captureRef = useRef<HTMLDivElement>(null);
   const markdownContent = generateMarkdown(profile);
+  const multiFiles = generateSkillFiles(profile);
 
   const copyPrompt = () => {
-    navigator.clipboard.writeText(markdownContent);
+    const contentToCopy = previewMode === 'single' ? markdownContent : multiFiles[selectedFile];
+    navigator.clipboard.writeText(contentToCopy);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
@@ -257,6 +261,34 @@ export const SkillProfileView: React.FC<SkillProfileViewProps> = ({ profile, onU
         </div>
       </div>
 
+      <div className="brutal-border bg-white p-6 mb-8">
+        <div className="flex items-center space-x-2 mb-4 border-b-2 border-brutal-black pb-2">
+          <Code className="h-5 w-5" />
+          <h3 className="font-display text-xl uppercase">{language === 'zh' ? '关键时间线' : 'Key Timeline'}</h3>
+        </div>
+        <div className="font-mono text-sm">
+          <div className="space-y-3">
+            {(profile.timeline || [])
+              .sort((a, b) => {
+                // 尝试将年份转换为数字进行排序，如果失败则按字符串排序
+                const yearA = parseInt(a.year) || 0;
+                const yearB = parseInt(b.year) || 0;
+                return yearA - yearB;
+              })
+              .map((item, idx) => (
+              <div key={idx} className="flex items-start space-x-3">
+                <span className="text-brutal-black font-bold min-w-[60px]">{item.year}</span>
+                <span className="text-gray-700">—</span>
+                <span className="flex-1 text-gray-800">{item.event}</span>
+              </div>
+            ))}
+            {(profile.timeline || []).length === 0 && (
+              <p className="text-gray-500 italic">{language === 'zh' ? '暂无时间线记录' : 'No timeline recorded'}</p>
+            )}
+          </div>
+        </div>
+      </div>
+
       {/* Watermark / Footer for exported image */}
       <div className="mt-4 flex flex-col md:flex-row items-center justify-between border-t-4 border-brutal-black pt-6 pb-4">
         <div className="font-display text-2xl uppercase tracking-tighter flex items-center space-x-2">
@@ -278,8 +310,14 @@ export const SkillProfileView: React.FC<SkillProfileViewProps> = ({ profile, onU
 
       <div className="brutal-border bg-brutal-black text-white p-6 mb-8 relative">
         <div className="flex items-center justify-between mb-4 border-b border-gray-800 pb-4">
-          <h3 className="font-display text-2xl uppercase text-neon-green">{language === 'zh' ? '生成的 SKILL.md' : 'Generated SKILL.md'}</h3>
+          <h3 className="font-display text-2xl uppercase text-neon-green">{language === 'zh' ? '生成的 SKILL 文件' : 'Generated SKILL Files'}</h3>
           <div className="flex space-x-3">
+            <button 
+              onClick={() => setPreviewMode(previewMode === 'single' ? 'multi' : 'single')}
+              className="flex items-center space-x-2 bg-gray-700 text-white px-3 py-1 font-mono text-xs uppercase hover:bg-gray-600 transition-colors"
+            >
+              <span>{previewMode === 'single' ? (language === 'zh' ? '多文件预览' : 'Multi-file Preview') : (language === 'zh' ? '单文件预览' : 'Single-file Preview')}</span>
+            </button>
             <button 
               onClick={copyPrompt}
               className="flex items-center space-x-2 bg-white text-brutal-black px-3 py-1 font-mono text-xs uppercase hover:bg-neon-green transition-colors"
@@ -303,11 +341,36 @@ export const SkillProfileView: React.FC<SkillProfileViewProps> = ({ profile, onU
             </button>
           </div>
         </div>
-        <div className="max-h-[500px] overflow-y-auto brutal-scrollbar bg-brutal-black p-4 border border-gray-800">
-          <pre className="font-mono text-xs whitespace-pre-wrap text-gray-300 leading-relaxed">
-            {markdownContent}
-          </pre>
-        </div>
+        {previewMode === 'single' ? (
+          <div className="max-h-[500px] overflow-y-auto brutal-scrollbar bg-brutal-black p-4 border border-gray-800">
+            <pre className="font-mono text-xs whitespace-pre-wrap text-gray-300 leading-relaxed">
+              {markdownContent}
+            </pre>
+          </div>
+        ) : (
+          <div>
+            <div className="flex space-x-2 mb-4 border-b border-gray-800 pb-2">
+              {Object.keys(multiFiles).map((fileName) => (
+                <button
+                  key={fileName}
+                  onClick={() => setSelectedFile(fileName)}
+                  className={`px-3 py-1 font-mono text-xs uppercase transition-colors ${
+                    selectedFile === fileName
+                      ? 'bg-neon-green text-brutal-black'
+                      : 'bg-gray-700 text-white hover:bg-gray-600'
+                  }`}
+                >
+                  {fileName}
+                </button>
+              ))}
+            </div>
+            <div className="max-h-[500px] overflow-y-auto brutal-scrollbar bg-brutal-black p-4 border border-gray-800">
+              <pre className="font-mono text-xs whitespace-pre-wrap text-gray-300 leading-relaxed">
+                {multiFiles[selectedFile]}
+              </pre>
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="flex justify-center">

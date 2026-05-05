@@ -1,5 +1,5 @@
 import React, { useCallback } from 'react';
-import { useDropzone } from 'react-dropzone';
+import { useDropzone, type Accept, type DropzoneOptions } from 'react-dropzone';
 import { Upload, File, X, FileText, FileImage, FileCode, FileJson } from 'lucide-react';
 import * as mammoth from 'mammoth';
 import * as pdfjsLib from 'pdfjs-dist';
@@ -140,20 +140,28 @@ export const FileUploader: React.FC<FileUploaderProps> = ({ files, setFiles, lan
     });
   }, [setFiles]);
 
-  const { getRootProps, getInputProps, isDragActive } = useDropzone({ 
+  const accept: Accept = {
+    'application/pdf': ['.pdf'],
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx'],
+    'text/plain': ['.txt', '.md', '.csv', '.log'],
+    'application/json': ['.json'],
+    'image/*': ['.png', '.jpg', '.jpeg', '.webp'],
+    'text/html': ['.html', '.htm'],
+    'text/javascript': ['.js', '.jsx'],
+    'text/typescript': ['.ts', '.tsx'],
+    'text/x-python': ['.py']
+  };
+
+  const dropzoneOptions: DropzoneOptions = {
     onDrop,
-    accept: {
-      'application/pdf': ['.pdf'],
-      'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx'],
-      'text/plain': ['.txt', '.md', '.csv', '.log'],
-      'application/json': ['.json'],
-      'image/*': ['.png', '.jpg', '.jpeg', '.webp'],
-      'text/html': ['.html', '.htm'],
-      'text/javascript': ['.js', '.jsx'],
-      'text/typescript': ['.ts', '.tsx'],
-      'text/x-python': ['.py']
-    }
-  });
+    accept,
+    multiple: true,
+    onDragEnter: undefined,
+    onDragOver: undefined,
+    onDragLeave: undefined
+  };
+
+  const { getRootProps, getInputProps, isDragActive } = useDropzone(dropzoneOptions);
 
   const removeFile = (index: number) => {
     setFiles((prev) => prev.filter((_, i) => i !== index));

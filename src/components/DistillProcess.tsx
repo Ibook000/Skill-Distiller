@@ -14,15 +14,15 @@ export const DistillProcess: React.FC<{ language: 'zh' | 'en', currentStep: numb
     <div className="w-full flex flex-col items-center justify-center py-12">
       <motion.div
         animate={{ 
-          scale: [1, 1.2, 1],
-          rotate: [0, 180, 360]
+          scale: [1, 1.1, 1],
+          rotate: [0, 360]
         }}
         transition={{ 
-          duration: 2,
+          duration: 3,
           repeat: Infinity,
-          ease: "easeInOut"
+          ease: "linear"
         }}
-        className="w-24 h-24 brutal-border rounded-full flex items-center justify-center bg-neon-green mb-8 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]"
+        className="w-24 h-24 brutal-border rounded-full flex items-center justify-center bg-neon-green mb-8 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] dark:shadow-[4px_4px_0px_0px_rgba(255,255,255,1)]"
       >
         <Zap className="h-10 w-10" />
       </motion.div>
@@ -51,8 +51,9 @@ export const DistillProcess: React.FC<{ language: 'zh' | 'en', currentStep: numb
                 })
               }}
               transition={{ 
-                delay: index * 0.1,
-                boxShadow: { duration: 1.5, repeat: Infinity, ease: "easeInOut" }
+                opacity: { duration: 0.5 },
+                x: { type: "spring", stiffness: 100, damping: 15, delay: index * 0.1 },
+                boxShadow: { duration: 2, repeat: Infinity, ease: "easeInOut" }
               }}
               className={`relative overflow-hidden flex items-center p-4 brutal-border transition-colors duration-300 ${
                 isActive ? 'bg-brutal-black text-neon-green scale-[1.02]' : 

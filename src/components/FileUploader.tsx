@@ -167,8 +167,8 @@ export const FileUploader: React.FC<FileUploaderProps> = ({ files, setFiles, lan
     <div className="w-full">
       <div 
         {...getRootProps()} 
-        className={`brutal-border p-12 text-center cursor-pointer transition-colors duration-300 ${
-          isDragActive ? 'bg-neon-green/20' : 'bg-[var(--card-bg)] hover:bg-gray-50 dark:hover:bg-gray-800'
+        className={`brutal-border p-12 text-center cursor-pointer transition-all duration-300 ${
+          isDragActive ? 'bg-gray-100 dark:bg-gray-800 border-neon-green border-dashed' : 'bg-[var(--card-bg)] hover:bg-gray-50 dark:hover:bg-gray-800/80 outline-none'
         }`}
       >
         <input {...getInputProps()} />
@@ -183,7 +183,10 @@ export const FileUploader: React.FC<FileUploaderProps> = ({ files, setFiles, lan
           <h4 className="font-mono text-sm uppercase font-bold mb-4 text-[var(--text-primary)]">{language === 'zh' ? '等待蒸馏' : 'Queued for Distillation'} ({files.length})</h4>
           <ul className="space-y-2">
             {files.map((file, idx) => (
-              <li key={idx} className="flex items-center justify-between p-3 brutal-border bg-[var(--card-bg)] transition-colors duration-300">
+              <li 
+                key={idx} 
+                className="flex items-center justify-between p-3 brutal-border bg-[var(--card-bg)] transition-colors duration-300 hover:border-neon-green"
+              >
                 <div className="flex items-center space-x-3 overflow-hidden">
                   {file.isProcessing ? (
                     <Loader2 className="h-5 w-5 flex-shrink-0 text-neon-green animate-spin" />
@@ -202,7 +205,7 @@ export const FileUploader: React.FC<FileUploaderProps> = ({ files, setFiles, lan
                 </div>
                 <button 
                   onClick={(e) => { e.stopPropagation(); removeFile(idx); }}
-                  className="p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded transition-colors text-[var(--text-primary)]"
+                  className="p-1 hover:bg-red-500 dark:hover:bg-red-500 hover:text-white rounded transition-colors text-[var(--text-primary)]"
                 >
                   <X className="h-4 w-4" />
                 </button>

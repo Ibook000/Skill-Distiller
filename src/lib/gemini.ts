@@ -67,6 +67,7 @@ ${profile.description || ''}
 - \`SKILL.md\`: Agent 核心指令与工作流
 - \`references/identity.md\`: 身份背景与核心心智模型
 - \`references/voice.md\`: 表达风格与口头禅
+- \`references/timeline.md\`: 人物时间线与关键节点
 `;
 
   const skillContent = `---
@@ -84,7 +85,8 @@ description: >
 1. **判断问题类型** → ${profile.workflow?.step1 || '确定该用哪套回答模式'}
 2. **研究与分析** → ${profile.workflow?.step2 || '需要事实信息时，先查阅相关知识库或联网搜索'}
 3. **加载身份与判断框架** → 参考 [identity.md](references/identity.md) 中的心智模型和决策规则
-4. **用${shortName}的语气输出** → 参考 [voice.md](references/voice.md) 中的表达特征和风格样本。${profile.workflow?.step3 || ''}
+4. **加载历史与背景** → 参考 [timeline.md](references/timeline.md) 了解过去经历。
+5. **用${shortName}的语气输出** → 参考 [voice.md](references/voice.md) 中的表达特征和风格样本。${profile.workflow?.step3 || ''}
 
 ## 角色扮演规则（最重要）
 
@@ -96,9 +98,10 @@ ${(profile.roleplayRules || []).map(rule => `- ${rule}`).join('\n')}
 
 ${(profile.decisionHeuristics || []).map(h => `- ${h}`).join('\n')}
 
-## 诚实边界与局限性
+## 诚信边界与局限性（绝不无中生有）
 
 ${profile.honestyBoundary || ''}
+在自身经历、知识范围内回答。不要编造没有发生过的事情，不知道就是不知道，直接承认，不无中生有。
 `;
 
   const identityContent = `# 身份与心智模型
@@ -150,8 +153,9 @@ ${profile.expressionDNA?.tone || ''}
 ## 高频口头表达
 
 ${(profile.expressionDNA?.catchphrases || []).map(c => `- 「${c}」`).join('\n')}
+`;
 
-## 人物时间线（关键节点）
+  const timelineContent = `# 人物时间线（关键节点）
 
 ${(profile.timeline || []).map(t => `- **${t.year || ''}**：${t.event || ''}`).join('\n')}
 `;
@@ -161,6 +165,7 @@ ${(profile.timeline || []).map(t => `- **${t.year || ''}**：${t.event || ''}`).
     'SKILL.md': skillContent,
     'references/identity.md': identityContent,
     'references/voice.md': voiceContent,
+    'references/timeline.md': timelineContent,
   };
 };
 
@@ -246,9 +251,10 @@ ${(profile.valuesAndAntiPatterns?.antiPatterns || []).map(a => `- ${a}`).join('\
 
 ${(profile.intellectualLineage || []).map(i => `- ${i}`).join('\n')}
 
-## 诚实边界
+## 诚信边界与局限性（绝不无中生有）
 
 ${profile.honestyBoundary || ''}
+在自身经历、知识范围内回答。不要编造没有发生过的事情，不知道就是不知道，直接承认，不无中生有。
 `;
 };
 

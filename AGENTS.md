@@ -13,14 +13,15 @@ See [README.md](README.md) for local setup and environment configuration.
 
 ## Architecture Overview
 
-- **Frontend**: React 19 + TypeScript, Vite build tool, Tailwind CSS styling
-- **AI Integration**: OpenAI-compatible API clients (DeepSeek primary, OpenAI fallback) for multi-agent distillation pipeline
+- **Frontend**: React 19 + TypeScript, Vite build tool, Tailwind CSS v4 styling
+- **AI Integration**: OpenAI-compatible `/chat/completions` via raw `fetch` (configurable baseURL) for the multi-agent distillation pipeline
 - **Data Flow**: File upload → text extraction → 4-agent LLM analysis → structured profile output
-- **State Management**: React hooks (useState); API config persisted in localStorage
+- **State Management**: React hooks (useState); API config and theme persisted in localStorage
+- **File Parsing**: DOCX (mammoth), PDF (pdfjs-dist), OCR for images (tesseract.js)
 
 Key components:
 - [src/App.tsx](src/App.tsx) - Main app orchestrator and state management
-- [src/lib/openai.ts](src/lib/openai.ts) - Distillation engine with 4-agent pipeline
+- [src/lib/distill.ts](src/lib/distill.ts) - Distillation engine with 4-agent pipeline
 - [src/components/FileUploader.tsx](src/components/FileUploader.tsx) - File intake and processing
 - [src/components/DistillProcess.tsx](src/components/DistillProcess.tsx) - Progress UI with animations
 - [src/components/SkillProfileView.tsx](src/components/SkillProfileView.tsx) - Export and display results
@@ -50,5 +51,4 @@ Key components:
 - **Chunking Strategy**: Split large inputs, summarize chunks, merge for final analysis
 - **Output Templates**: Generate SKILL.md, README.md, identity/voice docs from profile data
 
-When modifying distillation logic, update prompts in `distillSkill()` and validate output structure. For new file formats, extend handlers in `FileUploader.tsx`.</content>
-<parameter name="filePath">f:/webcode/Skill-Distiller/AGENTS.md
+When modifying distillation logic, update prompts in `distillSkill()` and validate output structure. For new file formats, extend handlers in `FileUploader.tsx`.

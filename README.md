@@ -4,19 +4,21 @@
   <img src="./架构图.png" alt="系统架构图" width="800" />
 </p>
 
-> Upload documents, notes, or links and distill a person's digital footprint into a reusable skill/persona profile.
+> 上传文档、笔记或链接，通过 4-Agent LLM 流水线把一个人的数字足迹蒸馏成可复用的 AI 技能 / 人格档案（system prompt）。纯浏览器端，无后端。
 
 ## 功能特点
 
-- **多格式文件支持**: 支持 PDF、DOCX、图片、代码文件、纯文本等
-- **URL 内容提取**: 支持从网页链接提取内容 (使用 Jina Reader API)
-- **4-Agent 智能分析**:
-  - 语言学分析器 (Linguistic Profiler) - 分析语言风格和特征
-  - 认知心理学家 (Cognitive Psychologist) - 提取思维模型和价值观
-  - 角色工程师 (Roleplay Engineer) - 构建角色定位和工作流
-  - 主合成器 (Master Synthesizer) - 生成结构化技能档案
-- **一键导出**: 生成 SKILL.md、README.md、JSON 等可复用文档
-- **内置示例**: 提供 Steve Jobs、Linus Torvalds 示例快速体验
+- **多格式输入**: PDF / DOCX / 图片 (OCR) / 代码 / 纯文本，以及通过 Jina Reader 抓取网页 URL
+- **4-Agent 蒸馏流水线**（前 3 个 Agent 并行执行）:
+  - 语言学分析器 (Linguistic Profiler) — 语气、口头禅、词汇、表达风格
+  - 认知心理学家 (Cognitive Psychologist) — 思维模型、决策启发、价值观、反模式
+  - 角色工程师 (Roleplay Engineer) — 身份卡 + 三步工作流
+  - 主合成器 (Master Synthesizer) — 合成结构化 JSON `SkillProfile`
+- **AI Provider**: OpenAI 兼容接口（原生 `fetch` 调 `/chat/completions`，支持 OpenAI / DeepSeek / Moonshot / 自建代理等任意兼容端点）
+- **大文件分块**: 超 4 万字符自动分块、并发摘要后再进入流水线
+- **一键导出**: 单文件 Markdown、多文件 ZIP（README + SKILL + references）、PNG 档案卡
+- **双语 + 深色模式**: 中英文 UI 切换、深色模式，Neo-brutalist 视觉风格
+- **内置示例**: Steve Jobs、Linus Torvalds
 
 ## 界面预览
 
@@ -37,79 +39,79 @@
 
 ## 快速开始
 
-前置要求: Node.js 20+
+前置要求: **Node.js 20+**（推荐 22.13+，`pdfjs-dist` 6 对 Node 版本有要求）
 
-1. 安装依赖:
-   ```bash
-   npm install
-   ```
+```bash
+# 1. 安装依赖
+npm install
 
-2. 如需要，创建 `.env.local` 文件（参考 `.env.example`）:
-   ```bash
-   cp .env.example .env.local
-   ```
+# 2.（可选）创建 .env.local
+cp .env.example .env.local
 
-3. 配置 API Key（任选其一）:
-   - 在 `.env.local` 中设置 `DEEPSEEK_API_KEY` 或 `OPENAI_API_KEY`
-   - 或在应用右上角的 Settings 对话框中手动输入
+# 3. 启动开发服务器
+npm run dev
+```
 
-4. 启动开发服务器:
-   ```bash
-   npm run dev
-   ```
+打开 http://localhost:3000
 
-5. 打开浏览器访问 http://localhost:3000
+### 配置 API Key
+
+- **应用内 Settings 对话框填入**（推荐；存 `localStorage`，优先级最高）
+- 或在 `.env.local` 中设置 `OPENAI_API_KEY`
+
+应用调用 OpenAI 兼容的 `/chat/completions` 接口（原生 `fetch`），默认 Base URL `https://api.openai.com/v1`、默认模型 `gpt-4o-mini`。Base URL 可填任意兼容端点（如 DeepSeek `https://api.deepseek.com/v1`、Moonshot、自建代理），模型名按端点支持填写（`deepseek-chat` / `gpt-4o` / `qwen-72b` 等）。
 
 ## 使用方法
 
-1. **上传文件**: 拖拽或点击选择文件，支持 PDF、DOCX、图片、代码等
-2. **输入 URL**: 也可以直接输入网页链接提取内容
-3. **点击蒸馏**: 上传完成后点击 "开始蒸馏人格" 按钮
-4. **查看结果**: 等待 4-Agent 分析完成，查看生成的技能档案
-5. **导出使用**: 支持导出为 Markdown 文件或复制 JSON
+1. **上传文件**: 拖拽或点选 PDF / DOCX / 图片 / 代码等；或粘贴 URL
+2. **开始蒸馏**: 点 "开始蒸馏人格"
+3. **查看结果**: 等 4-Agent 分析完成
+4. **导出**: Markdown / ZIP / PNG
 
 ## 技术栈
 
-- **前端框架**: React 19 + TypeScript
-- **构建工具**: Vite
-- **样式**: Tailwind CSS + Motion 动画
-- **AI 集成**: DeepSeek / OpenAI API (OpenAI 兼容)
-- **文件处理**:
-  - mammoth (DOCX 解析)
-  - pdfjs-dist (PDF 解析)
-  - tesseract.js (图片 OCR)
-  - Jina Reader (网页内容提取)
-
-## 默认配置
-
-- API 端点: `https://api.deepseek.com`
-- 模型: `deepseek-chat`
-- 最终合成请求使用 `response_format: { "type": "json_object" }` 确保返回 JSON 格式
+- **前端**: React 19 + TypeScript
+- **构建**: Vite 8
+- **样式**: Tailwind CSS 4 + Motion
+- **AI**: 原生 fetch 调 OpenAI 兼容 `/chat/completions` 接口
+- **文件解析**: mammoth (DOCX) / pdfjs-dist (PDF) / tesseract.js (OCR) / Jina Reader (URL)
 
 ## 项目结构
 
 ```
 src/
-├── App.tsx                    # 主应用组件
+├── main.tsx                       # 入口
+├── App.tsx                        # 主应用 + Settings + 主题/语言
 ├── components/
-│   ├── FileUploader.tsx      # 文件上传组件
-│   ├── DistillProcess.tsx    # 蒸馏过程进度
-│   └── SkillProfileView.tsx  # 技能档案展示与导出
+│   ├── FileUploader.tsx           # 文件上传 + 解析 (PDF/DOCX/OCR)
+│   ├── DistillProcess.tsx         # 蒸馏过程进度
+│   └── SkillProfileView.tsx       # 档案展示与导出
 └── lib/
-    ├── openai.ts             # 蒸馏引擎核心 (4-Agent Pipeline)
-    └── gemini.ts             # Gemini API 封装
+    └── distill.ts                 # 蒸馏引擎 (4-Agent Pipeline)
 ```
+
+## 开发脚本
+
+| 命令 | 说明 |
+|------|------|
+| `npm run dev` | Vite 开发服务器 (端口 3000，0.0.0.0) |
+| `npm run build` | 生产构建 |
+| `npm run lint` | TypeScript 类型检查 (`tsc --noEmit`) |
+| `npm run clean` | 清除 `dist/` |
 
 ## 常见问题
 
-**Q: API 请求失败怎么办？**
-A: 检查 API Key 是否正确配置，或在 Settings 中手动输入有效的 Key。
+**Q: API 请求失败 / 报 CORS 错？**
+A: 浏览器直连某些 API（如 OpenAI 官方）可能被跨域拦截。在 Settings 里把 Base URL 换成支持跨域的代理地址，或用本身允许浏览器跨域的兼容服务（如 DeepSeek）。
 
-**Q: 大文件如何处理？**
-A: 超过 40KB 的文件会自动分块处理并生成摘要。
+**Q: 大文件怎么办？**
+A: 超 4 万字符自动分块、并发摘要后再跑流水线。
 
-**Q: 支持哪些文件格式？**
-A: 支持 PDF、DOCX、TXT、MD、图片 (JPG/PNG/GIF) 等常见格式。
+**Q: 支持哪些格式？**
+A: PDF、DOCX、TXT、MD、图片 (JPG/PNG/GIF)、代码文件，以及网页 URL。
+
+**Q: Key 存哪？安全吗？**
+A: Settings 里填的存 `localStorage('nuwa_api_config')`，优先级高于 `.env.local`。无后端，Key 只在你的浏览器里，不上传服务器。注意：明文存储，不适合高安全场景。
 
 ## License
 

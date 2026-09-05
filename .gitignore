@@ -6,3 +6,6 @@ coverage/
 *.log
 .env*
 !.env.example
+
+# 本地临时/测试脚本（可能含密钥，勿提交）
+test-api.mjs

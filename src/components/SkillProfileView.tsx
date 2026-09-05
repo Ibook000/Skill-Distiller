@@ -1,5 +1,5 @@
-import React, { useState, useRef } from 'react';
-import { SkillProfile, generateMarkdown, generateSkillFiles } from '../lib/gemini';
+import React, { useState, useEffect, useRef } from 'react';
+import { SkillProfile, generateMarkdown, generateSkillFiles } from '../lib/distill';
 import { User, Brain, MessageSquare, Code, Copy, Check, Download, BookOpen, Scale, FileArchive, Image as ImageIcon, Loader2, Clock, Plus, Trash2, Edit2, X, ListChecks, GitMerge, Lightbulb, Shield } from 'lucide-react';
 import { motion } from 'motion/react';
 import JSZip from 'jszip';
@@ -17,16 +17,22 @@ interface SkillProfileViewProps {
 export const SkillProfileView: React.FC<SkillProfileViewProps> = ({ profile, onUpdateProfile, onReset, language }) => {
   const [copied, setCopied] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
+  const [activeFile, setActiveFile] = useState('flat');
   const captureRef = useRef<HTMLDivElement>(null);
-  const [previewMode, setPreviewMode] = useState<'single' | 'multi'>('single');
-  const [selectedFile, setSelectedFile] = useState<string>('SKILL.md');
-  const multiFiles = React.useMemo(() => generateSkillFiles(profile), [profile]);
   const markdownContent = generateMarkdown(profile);
-
-  const currentPreviewContent = previewMode === 'single' ? markdownContent : multiFiles[selectedFile] || '';
+  const skillFiles = generateSkillFiles(profile);
+  const fileTabs = [
+    { id: 'flat', label: language === 'zh' ? 'SKILL.md（单文件）' : 'SKILL.md (single file)', content: markdownContent },
+    { id: 'SKILL.md', label: language === 'zh' ? 'SKILL.md（包内）' : 'SKILL.md (package)', content: skillFiles['SKILL.md'] },
+    { id: 'README.md', label: 'README.md', content: skillFiles['README.md'] },
+    { id: 'references/identity.md', label: 'references/identity.md', content: skillFiles['references/identity.md'] },
+    { id: 'references/voice.md', label: 'references/voice.md', content: skillFiles['references/voice.md'] },
+    { id: 'references/timeline.md', label: 'references/timeline.md', content: skillFiles['references/timeline.md'] },
+  ];
+  const activeContent = fileTabs.find(t => t.id === activeFile)?.content ?? markdownContent;
 
   const copyPrompt = () => {
-    navigator.clipboard.writeText(currentPreviewContent);
+    navigator.clipboard.writeText(activeContent);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
@@ -68,6 +74,10 @@ export const SkillProfileView: React.FC<SkillProfileViewProps> = ({ profile, onU
   const [editingModelData, setEditingModelData] = useState<any>(null);
   const [isEditingHonesty, setIsEditingHonesty] = useState(false);
   const [honestyValue, setHonestyValue] = useState(profile.honestyBoundary || '');
+
+  useEffect(() => {
+    setHonestyValue(profile.honestyBoundary || '');
+  }, [profile.honestyBoundary]);
 
   const handleSaveHonesty = () => {
     if (!onUpdateProfile) return;
@@ -120,10 +130,11 @@ export const SkillProfileView: React.FC<SkillProfileViewProps> = ({ profile, onU
       // Wait a bit for any re-renders
       await new Promise(resolve => setTimeout(resolve, 100));
       
+      const isDark = document.documentElement.classList.contains('dark');
       const dataUrl = await toPng(captureRef.current, {
         quality: 1.0,
         pixelRatio: 2,
-        backgroundColor: '#f8f9fa', // Match the app's background color
+        backgroundColor: isDark ? '#0d0d0d' : '#f8f9fa',
         style: {
           padding: '2rem',
           margin: '0',
@@ -146,7 +157,6 @@ export const SkillProfileView: React.FC<SkillProfileViewProps> = ({ profile, onU
     <motion.div 
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
       className="w-full"
     >
       <div className="flex justify-end mb-4">
@@ -220,9 +230,9 @@ export const SkillProfileView: React.FC<SkillProfileViewProps> = ({ profile, onU
             <h3 className="font-display text-xl uppercase">{language === 'zh' ? '身份卡' : 'Identity Card'}</h3>
           </div>
           <div className="space-y-4 font-mono text-sm">
-            <p><strong className="text-neon-green bg-brutal-black px-1">我是谁</strong> {profile.identityCard?.whoAmI || ''}</p>
-            <p><strong className="text-neon-green bg-brutal-black px-1">我的起点</strong> {profile.identityCard?.background || ''}</p>
-            <p><strong className="text-neon-green bg-brutal-black px-1">当前状态</strong> {profile.identityCard?.currentStatus || ''}</p>
+            <p><strong className="text-neon-green bg-brutal-black px-1">{language === 'zh' ? '我是谁' : 'Who I Am'}</strong> {profile.identityCard?.whoAmI || ''}</p>
+            <p><strong className="text-neon-green bg-brutal-black px-1">{language === 'zh' ? '我的起点' : 'My Origin'}</strong> {profile.identityCard?.background || ''}</p>
+            <p><strong className="text-neon-green bg-brutal-black px-1">{language === 'zh' ? '当前状态' : 'Current Status'}</strong> {profile.identityCard?.currentStatus || ''}</p>
           </div>
         </div>
 
@@ -256,10 +266,10 @@ export const SkillProfileView: React.FC<SkillProfileViewProps> = ({ profile, onU
               {onUpdateProfile && (
                 <button 
                   onClick={() => openEditModal(idx)} 
-                  className="absolute top-2 right-2 p-2 bg-[var(--bg-primary)] hover:bg-neon-green hover:text-brutal-black border-2 border-transparent hover:border-brutal-black transition-colors opacity-0 group-hover:opacity-100 text-[var(--text-primary)]"
+                  className="absolute top-2 right-2 p-2 bg-gray-100 dark:bg-gray-800 hover:bg-neon-green border-2 border-transparent hover:border-brutal-black dark:hover:border-white transition-colors opacity-0 group-hover:opacity-100"
                   title={language === 'zh' ? '编辑此模型' : 'Edit this model'}
                 >
-                  <Edit2 className="h-4 w-4" />
+                  <Edit2 className="h-4 w-4 text-[var(--text-primary)] group-hover:text-brutal-black" />
                 </button>
               )}
               <h4 className="font-bold text-lg mb-2 bg-neon-green text-brutal-black inline-block px-1 self-start pr-8">{model.name || ''}</h4>
@@ -291,13 +301,13 @@ export const SkillProfileView: React.FC<SkillProfileViewProps> = ({ profile, onU
                   </p>
                   <div className="space-y-2">
                     {model.sourceSnippets.map((snippet, sIdx) => (
-                      <div key={sIdx} className="font-mono text-xs bg-[var(--bg-primary)] p-2 border border-gray-200 dark:border-gray-700 text-[var(--text-primary)] italic relative flex flex-col">
+                      <div key={sIdx} className="font-mono text-xs bg-gray-100 dark:bg-gray-800 p-2 border border-gray-200 dark:border-gray-700 text-gray-800 dark:text-gray-200 italic relative flex flex-col">
                         <div className="relative">
                           <span className="absolute -left-1 -top-1 text-neon-green text-lg leading-none font-serif">"</span>
                           <span className="relative z-10 pl-2">{snippet.quote || ''}</span>
                           <span className="absolute -right-1 -bottom-2 text-neon-green text-lg leading-none font-serif">"</span>
                         </div>
-                        <div className="text-right mt-2 text-[10px] text-gray-500 dark:text-gray-400 font-bold not-italic">
+                        <div className="text-right mt-2 text-[10px] text-gray-600 dark:text-gray-400 font-bold not-italic">
                           — {snippet.source || ''}
                         </div>
                       </div>
@@ -317,7 +327,7 @@ export const SkillProfileView: React.FC<SkillProfileViewProps> = ({ profile, onU
         </div>
         <ul className="space-y-3 font-mono text-sm">
           {(profile.decisionHeuristics || []).map((heuristic, idx) => (
-            <li key={idx} className="flex items-start bg-[var(--bg-primary)] p-3 border border-gray-200 dark:border-gray-700">
+            <li key={idx} className="flex items-start bg-gray-100 dark:bg-gray-800 p-3 border border-gray-200 dark:border-gray-700">
               <span className="text-brutal-black bg-neon-green px-2 mr-3 font-bold border-2 border-brutal-black">{idx + 1}</span>
               <span className="flex-1 mt-1">{heuristic}</span>
             </li>
@@ -359,7 +369,7 @@ export const SkillProfileView: React.FC<SkillProfileViewProps> = ({ profile, onU
           {onUpdateProfile && (
             <button 
               onClick={handleAddTimelineEntry}
-              className="flex items-center space-x-1 text-xs font-mono bg-brutal-black text-neon-green px-2 py-1 hover:opacity-80 transition-colors border-2 border-brutal-black dark:border-white"
+              className="flex items-center space-x-1 text-xs font-mono bg-brutal-black text-neon-green px-2 py-1 hover:bg-gray-800 transition-colors border-2 border-brutal-black dark:border-white"
             >
               <Plus className="h-3 w-3" />
               <span>{language === 'zh' ? '添加记录' : 'Add Entry'}</span>
@@ -383,7 +393,7 @@ export const SkillProfileView: React.FC<SkillProfileViewProps> = ({ profile, onU
                           type="text"
                           value={item.year || ''}
                           onChange={(e) => handleUpdateTimelineEntry(idx, 'year', e.target.value)}
-                          className="w-full font-bold text-[var(--text-primary)] bg-[var(--bg-primary)] border border-gray-300 dark:border-gray-600 p-1 focus:border-neon-green focus:ring-1 focus:ring-neon-green outline-none"
+                          className="w-full font-bold text-brutal-black bg-gray-50 dark:bg-gray-800 dark:text-white border border-gray-300 dark:border-gray-600 p-1 focus:border-neon-green focus:ring-1 focus:ring-neon-green outline-none"
                           placeholder={language === 'zh' ? '年份' : 'Year'}
                         />
                       ) : (
@@ -395,7 +405,7 @@ export const SkillProfileView: React.FC<SkillProfileViewProps> = ({ profile, onU
                         <textarea
                           value={item.event || ''}
                           onChange={(e) => handleUpdateTimelineEntry(idx, 'event', e.target.value)}
-                          className="w-full text-[var(--text-primary)] bg-[var(--bg-primary)] border border-gray-300 dark:border-gray-600 p-1 focus:border-neon-green focus:ring-1 focus:ring-neon-green outline-none resize-y min-h-[32px]"
+                          className="w-full text-gray-700 dark:text-gray-200 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 p-1 focus:border-neon-green focus:ring-1 focus:ring-neon-green outline-none resize-y min-h-[32px]"
                           placeholder={language === 'zh' ? '事件描述' : 'Event description'}
                         />
                       ) : (
@@ -427,7 +437,7 @@ export const SkillProfileView: React.FC<SkillProfileViewProps> = ({ profile, onU
         <div className="font-mono text-sm">
           <ul className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {(profile.intellectualLineage || []).map((item, idx) => (
-              <li key={idx} className="flex items-start border-l-4 border-neon-green pl-3 py-2 bg-[var(--bg-primary)] hover:bg-black/5 dark:hover:bg-white/5 hover:-translate-y-0.5 transition-all">
+              <li key={idx} className="flex items-start border-l-4 border-neon-green pl-3 py-2 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
                 {item}
               </li>
             ))}
@@ -444,7 +454,7 @@ export const SkillProfileView: React.FC<SkillProfileViewProps> = ({ profile, onU
           {onUpdateProfile && !isEditingHonesty && (
             <button 
               onClick={() => setIsEditingHonesty(true)}
-              className="p-1 hover:bg-neon-green hover:text-brutal-black border-2 border-transparent hover:border-brutal-black transition-colors text-[var(--text-primary)]"
+              className="p-1 hover:bg-neon-green hover:text-brutal-black border-2 border-transparent hover:border-brutal-black transition-colors"
               title={language === 'zh' ? '编辑边界' : 'Edit Boundary'}
             >
               <Edit2 className="h-4 w-4" />
@@ -479,7 +489,7 @@ export const SkillProfileView: React.FC<SkillProfileViewProps> = ({ profile, onU
             </div>
           </div>
         ) : (
-          <p className="font-mono text-sm leading-relaxed text-gray-700 dark:text-gray-300 italic">
+          <p className="font-mono text-sm leading-relaxed text-gray-800 dark:text-gray-200 italic">
             {profile.honestyBoundary || (language === 'zh' ? '暂未定义诚信边界。' : 'No honesty boundary defined yet.')}
           </p>
         )}
@@ -504,91 +514,53 @@ export const SkillProfileView: React.FC<SkillProfileViewProps> = ({ profile, onU
 
       </div>
 
-      <div className="brutal-border bg-brutal-black text-white p-6 mb-8 relative flex flex-col h-[700px]">
+      <div className="brutal-border bg-brutal-black text-white p-6 mb-8 relative">
         <div className="flex items-center justify-between mb-4 border-b border-gray-800 pb-4">
-          <div className="flex items-center space-x-4">
-            <h3 className="font-display text-2xl uppercase text-neon-green">{language === 'zh' ? '生成的技能代码' : 'Generated Skill'}</h3>
-            <div className="flex bg-gray-900 border-2 border-gray-700">
-              <button 
-                onClick={() => setPreviewMode('single')}
-                className={`px-3 py-1 font-mono text-xs font-bold transition-colors ${previewMode === 'single' ? 'bg-neon-green text-brutal-black' : 'text-white hover:bg-gray-800'}`}
-              >
-                {language === 'zh' ? '单文件' : 'Single File'}
-              </button>
-              <button 
-                onClick={() => {
-                  setPreviewMode('multi');
-                  if (!multiFiles[selectedFile]) {
-                    setSelectedFile('SKILL.md');
-                  }
-                }}
-                className={`px-3 py-1 font-mono text-xs font-bold transition-colors ${previewMode === 'multi' ? 'bg-neon-green text-brutal-black' : 'text-white hover:bg-gray-800'}`}
-              >
-                {language === 'zh' ? '多文件' : 'Multi-file'}
-              </button>
-            </div>
-          </div>
+          <h3 className="font-display text-2xl uppercase text-neon-green">{language === 'zh' ? '生成的 SKILL.md' : 'Generated SKILL.md'}</h3>
           <div className="flex space-x-3">
             <button 
               onClick={copyPrompt}
-              className="flex items-center space-x-2 bg-white text-brutal-black px-3 py-1 font-mono text-xs uppercase hover:bg-neon-green transition-colors border-2 border-transparent hover:border-white"
+              className="flex items-center space-x-2 bg-white text-brutal-black px-3 py-1 font-mono text-xs uppercase hover:bg-neon-green transition-colors"
             >
               {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-              <span>{copied ? (language === 'zh' ? '已复制！' : 'Copied!') : (language === 'zh' ? '复制当前文件' : 'Copy File')}</span>
+              <span>{copied ? (language === 'zh' ? '已复制！' : 'Copied!') : (language === 'zh' ? '复制' : 'Copy')}</span>
             </button>
             <button 
               onClick={downloadMarkdown}
-              className="flex items-center space-x-2 bg-white text-brutal-black px-3 py-1 font-mono text-xs uppercase hover:bg-neon-green transition-colors font-bold border-2 border-transparent hover:border-white"
+              className="flex items-center space-x-2 bg-white text-brutal-black px-3 py-1 font-mono text-xs uppercase hover:bg-gray-200 transition-colors font-bold"
             >
               <Download className="h-4 w-4" />
-              <span>{language === 'zh' ? '下载单文件(.md)' : 'DL Single (.md)'}</span>
+              <span>{language === 'zh' ? '单文件 (.md)' : 'Single File (.md)'}</span>
             </button>
             <button 
               onClick={downloadZip}
-              className="flex items-center space-x-2 bg-neon-green text-brutal-black px-3 py-1 font-mono text-xs uppercase hover:bg-white transition-colors font-bold border-2 border-transparent hover:border-neon-green"
+              className="flex items-center space-x-2 bg-neon-green text-brutal-black px-3 py-1 font-mono text-xs uppercase hover:bg-white transition-colors font-bold"
             >
               <FileArchive className="h-4 w-4" />
-              <span>{language === 'zh' ? '下载包(.zip)' : 'DL Package (.zip)'}</span>
+              <span>{language === 'zh' ? '多文件包 (.zip)' : 'Multi-file (.zip)'}</span>
             </button>
           </div>
         </div>
-        
-        {previewMode === 'single' ? (
-          <div className="flex-1 overflow-y-auto brutal-scrollbar bg-[#111] p-4 border border-gray-800">
-            <pre className="font-mono text-xs whitespace-pre-wrap text-gray-300 leading-relaxed">
-              {currentPreviewContent}
-            </pre>
-          </div>
-        ) : (
-          <div className="flex-1 flex overflow-hidden border border-gray-800 bg-[#111]">
-            <div className="w-48 flex-shrink-0 border-r border-gray-800 bg-black flex flex-col overflow-y-auto brutal-scrollbar">
-              <div className="p-2 text-xs font-mono font-bold text-gray-500 uppercase border-b border-gray-800">Files</div>
-              {Object.keys(multiFiles).sort().map(file => (
-                <button
-                  key={file}
-                  onClick={() => setSelectedFile(file)}
-                  className={`text-left px-3 py-2 font-mono text-xs truncate transition-colors ${
-                    selectedFile === file 
-                      ? 'bg-gray-800 text-neon-green border-l-2 border-neon-green' 
-                      : 'text-gray-400 hover:bg-gray-900 border-l-2 border-transparent'
-                  }`}
-                  title={file}
-                >
-                  {file}
-                </button>
-              ))}
-            </div>
-            <div className="flex-1 overflow-y-auto brutal-scrollbar p-4 bg-[#111]">
-              <div className="text-xs font-mono text-gray-500 mb-4 pb-2 border-b border-gray-800 flex justify-between">
-                <span>{selectedFile}</span>
-                <span>{currentPreviewContent.split('\n').length} lines</span>
-              </div>
-              <pre className="font-mono text-xs whitespace-pre-wrap text-gray-300 leading-relaxed">
-                {currentPreviewContent}
-              </pre>
-            </div>
-          </div>
-        )}
+        <div className="flex flex-wrap gap-1 mb-3">
+          {fileTabs.map(tab => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveFile(tab.id)}
+              className={`px-2 py-1 font-mono text-xs uppercase whitespace-nowrap transition-colors ${
+                activeFile === tab.id
+                  ? 'bg-neon-green text-brutal-black font-bold'
+                  : 'bg-white text-brutal-black hover:bg-gray-200'
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+        <div className="max-h-[500px] overflow-y-auto brutal-scrollbar bg-brutal-black p-4 border border-gray-800">
+          <pre className="font-mono text-xs whitespace-pre-wrap text-gray-300 leading-relaxed">
+            {activeContent}
+          </pre>
+        </div>
       </div>
 
       <div className="flex justify-center">
@@ -649,7 +621,7 @@ export const SkillProfileView: React.FC<SkillProfileViewProps> = ({ profile, onU
             <div className="p-4 border-t-4 border-brutal-black dark:border-white bg-gray-50 dark:bg-gray-800 flex justify-end space-x-4 transition-colors duration-300">
               <button 
                 onClick={closeEditModal} 
-                className="px-6 py-2 font-bold border-2 border-brutal-black dark:border-white hover:bg-brutal-black hover:text-white dark:hover:bg-white dark:hover:text-brutal-black transition-colors"
+                className="px-6 py-2 font-bold border-2 border-brutal-black dark:border-white hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
               >
                 {language === 'zh' ? '取消' : 'Cancel'}
               </button>

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { FileUploader, UploadedFile } from './components/FileUploader';
 import { DistillProcess } from './components/DistillProcess';
 import { SkillProfileView } from './components/SkillProfileView';
-import { distillSkill, SkillProfile, ApiConfig } from './lib/gemini';
+import { distillSkill, SkillProfile, ApiConfig } from './lib/distill';
 import { Zap, AlertCircle, Sparkles, Link as LinkIcon, Loader2, Settings, X, Sun, Moon } from 'lucide-react';
 
 export default function App() {
@@ -16,17 +16,22 @@ export default function App() {
   
   const [showSettings, setShowSettings] = useState(false);
   const [apiConfig, setApiConfig] = useState<ApiConfig>({
-    provider: 'gemini',
     apiKey: '',
     baseUrl: '',
-    model: 'gemini-2.5-flash'
+    model: 'gpt-4o-mini'
   });
 
   useEffect(() => {
     const saved = localStorage.getItem('nuwa_api_config');
     if (saved) {
       try {
-        setApiConfig(JSON.parse(saved));
+        const parsed = JSON.parse(saved) as ApiConfig;
+        // Migrate configs saved by the dual-provider version: a Gemini model name
+        // posted to an OpenAI-compatible endpoint just fails.
+        if (!parsed.model || parsed.model.includes('gemini')) {
+          parsed.model = 'gpt-4o-mini';
+        }
+        setApiConfig(parsed);
       } catch (e) {}
     }
 
@@ -133,15 +138,129 @@ export default function App() {
     setError(null);
     
     try {
-      // Create a mock file with some text to trigger the distillation
-      const mockText = type === 'steve_jobs' 
-        ? "Design is not just what it looks like and feels like. Design is how it works. Innovation distinguishes between a leader and a follower. Stay hungry, stay foolish." 
-        : "Talk is cheap. Show me the code. I'm doing a (free) operating system (just a hobby, won't be big and professional like gnu) for 386(486) AT clones.";
+      // Create a mock file with rich text to trigger the distillation
+      const mockText = type === 'steve_jobs'
+        ? `"Design is not just what it looks like and feels like. Design is how it works." — Apple Inc. 2003 Stanford commencement address
+
+"Stay hungry, stay foolish." — Apple Inc. 2003 Stanford commencement address
+
+"Innovation distinguishes between a leader and a follower." — Apple Inc. 2008
+
+"I'm convinced that about half of what separates successful entrepreneurs from the non-successful ones is pure perseverance." — 2005
+
+"When you work from the heart, you don't really have to worry about recognition." — 1997
+
+"I have never tried to get rich. I've always been more interested in what I could learn. How I could apply my time and energy to solving an interesting problem." — 1997 Fortune interview
+
+"Design isn't just what it looks like and feels like. Design is how it works." — 2003 Stanford commencement address
+
+"You can always tell the optimists. They're the guys getting fired." — 1997 Fortune interview
+
+"Things are best when they are simple, not when they are complicated." — 1997 Fortune interview
+
+"Sometimes life hits you in the head and you gotta remind yourself to believe." — Apple Inc. 2003 Stanford commencement address
+
+"The only way to do great work is to love what you do. If you haven't found it yet, keep looking. And don't settle." — Apple Inc. 2003 Stanford commencement address
+
+"Stay hungry. Stay foolish." — Apple Inc. 2003 Stanford commencement address
+
+"Your time is limited, so don't waste it living someone else's life. Don't be trapped by dogma — which is living with the results of other people's thinking." — Apple Inc. 2003 Stanford commencement address
+
+"Quality is better than quantity. One home run is much better than two doubles." — Apple Inc. 2003 Stanford commencement address
+
+"I think the key to creativity is being comfortable with being wrong." — Apple Inc. 2003
+
+"I've always found it fascinating that the same people who are so comfortable with the mundane and boring aspects of life are also so willing to embrace the new and the unknown." — Apple Inc. 2003
+
+"Our purpose is to tell the best story about our products. That means we need to have the best products." — Apple Inc.
+
+"Good designers don't design what the user doesn't want. They design what the user wants, but doesn't know they want." — Apple Inc.
+
+"Every time you see a computer, you should ask: what can this do for me?" — Apple Inc. 1985 interview
+
+"Technology alone is not enough — it's technology married with liberal arts, married with the humanities, that yields us the results that make our heart sing." — Apple Inc.
+
+"I have a really simple way of seeing this world. I just try to do the best job I can do." — Apple Inc. 2014
+
+"I don't have all the answers. I have really good questions." — Apple Inc. 2009
+
+"In order to do something you've never done before, you have to imagine a new way of doing it. That's where design is so important." — Apple Inc. 2003
+
+"I really think that if Apple Inc. is going to have any future, it's going to be because of the new products that we develop in this building, and that's why I'm here." — Apple Inc. 2008
+
+"Apple Inc. is a company of individuals who believe they can change the world. We're engineers, designers, and dreamers who share a passion for creating products that are better than what came before." — Apple Inc. 2005
+
+"Our most important decision is what not to work on. It's always what not to work on." — Apple Inc. 2003
+
+"The last few words that Steve Jobs ever uttered were: Wow. Wow. Wow." — Apple Inc. 2011`
+        : `"Talk is cheap. Show me the code." — Linus Torvalds, 2012
+
+"I'm doing a (free) operating system (just a hobby, won't be big and professional like gnu) for 386(486) AT clones." — Linus Torvalds, August 1991
+
+"There's no such thing as a bad user interface." — Linus Torvalds, 1999
+
+"The most important thing is to have fun. If you're having fun, then you're going to do things better." — Linus Torvalds
+
+"Most of my day, I'm looking at code, and most of my week, I'm looking at code. That's what I love doing. I really love reading code. Code is like a language. It's like a novel. It's like a poem." — Linus Torvalds, 2012
+
+"Good programmers are known by the code they write." — Linus Torvalds
+
+"The best thing about open source is that it creates a level of trust that you cannot get in the commercial world." — Linus Torvalds
+
+"Quality is not by accident." — Linus Torvalds, 2011
+
+"I want to be honest. I want to tell you the truth. I don't want to lie to you. I don't want to deceive you. I want to be transparent." — Linus Torvalds, 2015
+
+"I really, really hate the word 'perfect'. Nothing is perfect. But we can get close." — Linus Torvalds
+
+"The best code is code you don't have to maintain." — Linus Torvalds
+
+"Open source is about the freedom to share and use code. It's not about free beer." — Linus Torvalds
+
+"The most important thing is to have fun. If you're having fun, then you're going to do things better." — Linus Torvalds, 2005
+
+"I'm a very impatient person. I want things to work. I want things to be done. I don't want to wait." — Linus Torvalds
+
+"I'm not a perfect person. I make mistakes. But I'm honest about them." — Linus Torvalds, 2007
+
+"The best way to learn is to do. The best way to teach is to do." — Linus Torvalds
+
+"I'm not afraid of failure. I'm afraid of success. Because success brings new problems. Failure is just a temporary setback." — Linus Torvalds
+
+"Open source is not about the code. It's about the people. It's about the community." — Linus Torvalds
+
+"I think the best way to get something done is to do it yourself. But the best way to do it right is to do it together." — Linus Torvalds
+
+"Quality is not by accident." — Linus Torvalds, 2011
+
+"I'm not a perfect person. I make mistakes. But I'm honest about them." — Linus Torvalds, 2007
+
+"The most important thing is to have fun. If you're having fun, then you're going to do things better." — Linus Torvalds, 2005
+
+"Linux is the best thing since the invention of the wheel." — Linus Torvalds, 2009
+
+"Linux is not just a kernel. It's a community. It's a way of life." — Linus Torvalds, 2012
+
+"I don't think I'm a good leader. I think I'm a good programmer." — Linus Torvalds, 2003
+
+"The best way to get a good idea is to have lots of ideas." — Linus Torvalds
+
+"Code is like a language. It's like a novel. It's like a poem." — Linus Torvalds, 2012
+
+"Open source is about trust. It's about transparency. It's about freedom." — Linus Torvalds
+
+"Linux is about the freedom to share and use code. It's not about free beer." — Linus Torvalds, 2005
+
+"Quality is not by accident." — Linus Torvalds, 2011
+
+"I'm not afraid of failure. I'm afraid of success." — Linus Torvalds, 2007`
       
       const mockFile: UploadedFile = {
         name: `${type}_quotes.txt`,
         mimeType: 'text/plain',
-        base64: btoa(mockText),
+        // btoa 只接 Latin1；mockText 含 em dash / 中文等非 Latin1 字符，需先 UTF-8 编码再 base64。
+        // （引擎只对 image/* 读 base64，文本文件不会用到，这里仍按真实 base64 语义生成以防误用。）
+        base64: btoa(unescape(encodeURIComponent(mockText))),
         text: mockText,
         size: mockText.length
       };
@@ -321,33 +440,6 @@ export default function App() {
             <h2 className="text-2xl font-display uppercase mb-6 border-b-2 border-brutal-black dark:border-white pb-2">{language === 'zh' ? 'API 设置' : 'API Settings'}</h2>
             <div className="space-y-4">
               <div>
-                <label className="block font-mono text-sm mb-1 font-bold">API Provider</label>
-                <div className="flex space-x-4">
-                  <label className="flex items-center space-x-2 cursor-pointer">
-                    <input 
-                      type="radio" 
-                      name="provider" 
-                      value="gemini" 
-                      checked={apiConfig.provider === 'gemini'} 
-                      onChange={() => saveApiConfig({...apiConfig, provider: 'gemini', model: 'gemini-2.5-flash'})}
-                      className="text-neon-green focus:ring-neon-green"
-                    />
-                    <span className="font-mono text-sm">Google Gemini</span>
-                  </label>
-                  <label className="flex items-center space-x-2 cursor-pointer">
-                    <input 
-                      type="radio" 
-                      name="provider" 
-                      value="openai" 
-                      checked={apiConfig.provider === 'openai'} 
-                      onChange={() => saveApiConfig({...apiConfig, provider: 'openai', model: 'gpt-4o-mini'})}
-                      className="text-neon-green focus:ring-neon-green"
-                    />
-                    <span className="font-mono text-sm">OpenAI Compatible</span>
-                  </label>
-                </div>
-              </div>
-              <div>
                 <label className="block font-mono text-sm mb-1 font-bold">API Key</label>
                 <input
                   type="password"
@@ -364,7 +456,7 @@ export default function App() {
                   value={apiConfig.baseUrl || ''}
                   onChange={e => saveApiConfig({...apiConfig, baseUrl: e.target.value})}
                   className="w-full brutal-border p-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-neon-green bg-[var(--bg-primary)] transition-colors duration-300"
-                  placeholder={apiConfig.provider === 'openai' ? "https://api.openai.com/v1" : "https://generativelanguage.googleapis.com"}
+                  placeholder="https://api.openai.com/v1"
                 />
               </div>
               <div>
@@ -374,7 +466,7 @@ export default function App() {
                   value={apiConfig.model || ''}
                   onChange={e => saveApiConfig({...apiConfig, model: e.target.value})}
                   className="w-full brutal-border p-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-neon-green bg-[var(--bg-primary)] transition-colors duration-300"
-                  placeholder={apiConfig.provider === 'openai' ? "gpt-4o-mini" : "gemini-2.5-flash"}
+                  placeholder="gpt-4o-mini"
                 />
               </div>
             </div>

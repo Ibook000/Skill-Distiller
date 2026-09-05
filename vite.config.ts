@@ -7,6 +7,9 @@ export default defineConfig(({mode}) => {
   const env = loadEnv(mode, '.', '');
   return {
     plugins: [react(), tailwindcss()],
+    // Repo Sites are served under /<repo>/, so asset URLs need that prefix.
+    // Leave unset (or set to '/') for root-level hosts like Vercel.
+    base: process.env.PAGES_BASE || '/',
     define: {
       'process.env.OPENAI_API_KEY': JSON.stringify(env.OPENAI_API_KEY ?? ''),
     },

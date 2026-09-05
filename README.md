@@ -68,6 +68,19 @@ npm run dev
 3. **查看结果**: 等 4-Agent 分析完成
 4. **导出**: Markdown / ZIP / PNG
 
+## 部署
+
+推送 `main` 自动触发部署，无需手动操作。
+
+- **GitHub Pages**: https://Ibook000.github.io/Skill-Distiller/
+- **Vercel**: 零配置，同样监听 push
+
+base path 由 `PAGES_BASE` 环境变量控制：GitHub Actions 在构建时注入 `/Skill-Distiller/`（Repo Site 挂在 `/<repo>/` 下，资源路径必须带前缀）；不设置时保持默认 `/`，Vercel 部署不受影响。本地想验证 Pages 产物：
+
+```bash
+PAGES_BASE=/Skill-Distiller/ npm run build   # Windows PowerShell 需写成 $env:PAGES_BASE='/Skill-Distiller/'; npm run build
+```
+
 ## 技术栈
 
 - **前端**: React 19 + TypeScript

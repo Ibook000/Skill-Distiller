@@ -13,7 +13,7 @@ Skill Distiller (女娲 Nuwa) is a browser-based SPA that ingests documents, ima
 - `npm run lint` — TypeScript type check only (`tsc --noEmit`)
 - `npm run clean` — removes `dist/`
 
-Node.js 20+ required.
+Node.js 20+ required (22.13+ recommended — `pdfjs-dist` 6 declares `>=22.13.0 || >=24`; npm emits a non-fatal `EBADENGINE` warning on older 22.x).
 
 ## Environment Variables
 

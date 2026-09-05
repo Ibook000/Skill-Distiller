@@ -30,7 +30,7 @@ Key components:
 
 - Use functional React components with hooks
 - Handle errors by normalizing to user-friendly messages
-- Sanitize strings for API safety (remove invisible Unicode, strip quotes)
+- Fall back to env defaults when Settings is empty: `apiConfig?.apiKey || process.env.OPENAI_API_KEY`, `apiConfig?.model || 'gpt-4o-mini'`
 - Support bilingual UI (Chinese/English) via language prop
 - Use Lucide React icons and Tailwind utility classes
 - Implement motion animations for loaders and progress
